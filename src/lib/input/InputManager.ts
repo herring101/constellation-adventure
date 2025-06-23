@@ -97,7 +97,6 @@ export class InputManager {
 
     // Determine touch action based on screen position
     const screenWidth = window.innerWidth;
-    const screenHeight = window.innerHeight;
     
     // Right side of screen = jump
     if (touch.clientX > screenWidth * 0.6) {
@@ -113,7 +112,6 @@ export class InputManager {
     
     const touch = event.touches[0];
     const deltaX = touch.clientX - this.touchStartX;
-    const deltaY = touch.clientY - this.touchStartY;
     
     // Horizontal swipe detection
     const threshold = 20;

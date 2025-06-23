@@ -117,11 +117,11 @@ export class GameEngine {
 
   private update(deltaTime: number): void {
     this.gameState.gameTime += deltaTime;
-    this.updatePlayer(deltaTime);
+    this.updatePlayer();
     this.updateCamera();
   }
 
-  private updatePlayer(deltaTime: number): void {
+  private updatePlayer(): void {
     const player = this.gameState.player;
 
     // Apply gravity

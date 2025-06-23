@@ -1,6 +1,5 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import GameCanvas from '@/components/Game/GameCanvas';
 
 export default function Home() {
