@@ -1,6 +1,6 @@
 'use client';
 
-// import GameCanvas from '@/components/Game/GameCanvas';
+import { GameCanvas } from '@/components/GameCanvas';
 
 export default function Home() {
   return (
@@ -20,17 +20,17 @@ export default function Home() {
       </header>
       
       <main className="flex flex-col items-center">
-        <div className="bg-gray-800 p-8 rounded-lg shadow-2xl">
-          <div className="text-center text-white">
-            <div className="text-6xl mb-4">🌟</div>
-            <h2 className="text-2xl font-bold mb-4">ゲーム開発中</h2>
-            <p className="text-gray-300 mb-4">
-              ステラとセイラが協力してゲームを制作中です！
-            </p>
-            <div className="animate-pulse">
-              <div className="text-yellow-400">⭐ もうすぐ完成 ⭐</div>
-            </div>
-          </div>
+        <div className="mb-4 text-center">
+          <p className="text-gray-300 text-sm">
+            🎮 矢印キーまたはWASDで操作 | スペースキーでジャンプ
+          </p>
+          <p className="text-gray-400 text-xs mt-1">
+            📱 スマホの場合: 画面タッチで操作
+          </p>
+        </div>
+        
+        <div className="bg-gray-800 p-4 rounded-lg shadow-2xl">
+          <GameCanvas width={800} height={600} />
         </div>
         
         <div className="mt-4 text-center">
