@@ -1,31 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { GameCanvas } from '@/components/GameCanvas';
+import GameCanvas from '@/components/Game/GameCanvas';
 
 export default function Home() {
-  const [windowSize, setWindowSize] = useState({
-    width: 800,
-    height: 600
-  });
-
-  // ウィンドウサイズ監視
-  useEffect(() => {
-    const handleResize = () => {
-      const maxWidth = Math.min(window.innerWidth - 40, 1200);
-      const maxHeight = Math.min(window.innerHeight - 40, 800);
-      setWindowSize({
-        width: maxWidth,
-        height: maxHeight
-      });
-    };
-
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-purple-900 via-blue-900 to-indigo-900 flex flex-col items-center justify-center p-4">
       <header className="text-center mb-6">
@@ -50,10 +28,7 @@ export default function Home() {
       
       <main className="flex flex-col items-center">
         <div className="bg-gray-800 p-4 rounded-lg shadow-2xl">
-          <GameCanvas 
-            width={windowSize.width} 
-            height={windowSize.height} 
-          />
+          <GameCanvas />
         </div>
         
         <div className="mt-4 text-center">
