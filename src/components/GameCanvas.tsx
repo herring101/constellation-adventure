@@ -23,6 +23,7 @@ export interface GameState {
     y: number;
     width: number;
     height: number;
+    type: 'ground' | 'star' | 'cloud' | 'ice';
   }>;
   keys: Set<string>;
 }
@@ -43,14 +44,14 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ width, height }) => {
       x: 0,
     },
     platforms: [
-      { x: 0, y: height - 32, width: width * 3, height: 32 }, // 長い地面
-      { x: 200, y: height - 120, width: 128, height: 32 }, // プラットフォーム1
-      { x: 400, y: height - 200, width: 128, height: 32 }, // プラットフォーム2
-      { x: 600, y: height - 280, width: 128, height: 32 }, // プラットフォーム3
-      { x: 800, y: height - 160, width: 128, height: 32 }, // プラットフォーム4
-      { x: 1000, y: height - 240, width: 128, height: 32 }, // プラットフォーム5
-      { x: 1200, y: height - 180, width: 128, height: 32 }, // プラットフォーム6
-      { x: 1400, y: height - 300, width: 128, height: 32 }, // プラットフォーム7
+      { x: 0, y: height - 32, width: width * 3, height: 32, type: 'ground' }, // 長い地面
+      { x: 200, y: height - 120, width: 128, height: 32, type: 'star' }, // 星型プラットフォーム1
+      { x: 400, y: height - 200, width: 128, height: 32, type: 'cloud' }, // 雲型プラットフォーム1
+      { x: 600, y: height - 280, width: 128, height: 32, type: 'star' }, // 星型プラットフォーム2
+      { x: 800, y: height - 160, width: 128, height: 32, type: 'ice' }, // 氷結晶プラットフォーム1
+      { x: 1000, y: height - 240, width: 128, height: 32, type: 'cloud' }, // 雲型プラットフォーム2
+      { x: 1200, y: height - 180, width: 128, height: 32, type: 'star' }, // 星型プラットフォーム3
+      { x: 1400, y: height - 300, width: 128, height: 32, type: 'ice' }, // 氷結晶プラットフォーム2
     ],
     keys: new Set(),
   });
@@ -265,16 +266,123 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ width, height }) => {
     }
 
     // プラットフォーム描画（カメラオフセット適用）
-    ctx.fillStyle = '#4a5568';
-    ctx.strokeStyle = '#6b7280';
-    ctx.lineWidth = 2;
     for (const platform of gameState.platforms) {
       const screenX = platform.x - gameState.camera.x;
       // 画面内にある場合のみ描画
       if (screenX + platform.width >= 0 && screenX <= width) {
-        ctx.fillRect(screenX, platform.y, platform.width, platform.height);
-        ctx.strokeRect(screenX, platform.y, platform.width, platform.height);
+        drawPlatform(ctx, screenX, platform.y, platform.width, platform.height, platform.type);
       }
+    }
+    
+    // プラットフォーム描画関数
+    function drawPlatform(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, type: string) {
+      ctx.save();
+      
+      switch (type) {
+        case 'star':
+          // 星型プラットフォーム（金色・キラキラ）
+          const gradient = ctx.createLinearGradient(x, y, x, y + height);
+          gradient.addColorStop(0, '#ffd700');
+          gradient.addColorStop(0.5, '#ffed4e');
+          gradient.addColorStop(1, '#d97706');
+          ctx.fillStyle = gradient;
+          
+          // 星型の描画
+          ctx.beginPath();
+          const spikes = 5;
+          const centerX = x + width / 2;
+          const centerY = y + height / 2;
+          const outerRadius = Math.min(width, height) / 2;
+          const innerRadius = outerRadius * 0.6;
+          
+          for (let i = 0; i < spikes * 2; i++) {
+            const radius = i % 2 === 0 ? outerRadius : innerRadius;
+            const angle = (i * Math.PI) / spikes - Math.PI / 2;
+            const px = centerX + Math.cos(angle) * radius;
+            const py = centerY + Math.sin(angle) * radius;
+            
+            if (i === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+          }
+          ctx.closePath();
+          ctx.fill();
+          
+          // キラキラエフェクト
+          ctx.fillStyle = '#ffffff';
+          ctx.globalAlpha = 0.8;
+          for (let i = 0; i < 3; i++) {
+            const sparkX = x + (width / 4) * (i + 1);
+            const sparkY = y + height / 2;
+            ctx.beginPath();
+            ctx.arc(sparkX, sparkY, 2, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          break;
+          
+        case 'cloud':
+          // 雲型プラットフォーム（青・ふわふわ）
+          const cloudGradient = ctx.createLinearGradient(x, y, x, y + height);
+          cloudGradient.addColorStop(0, '#87ceeb');
+          cloudGradient.addColorStop(0.5, '#4fc3f7');
+          cloudGradient.addColorStop(1, '#29b6f6');
+          ctx.fillStyle = cloudGradient;
+          
+          // ふわふわ雲の描画
+          ctx.beginPath();
+          const cloudHeight = height * 0.8;
+          const cloudY = y + height * 0.2;
+          
+          // 雲の基本形
+          ctx.arc(x + width * 0.2, cloudY + cloudHeight * 0.5, cloudHeight * 0.3, 0, Math.PI * 2);
+          ctx.arc(x + width * 0.4, cloudY + cloudHeight * 0.3, cloudHeight * 0.4, 0, Math.PI * 2);
+          ctx.arc(x + width * 0.6, cloudY + cloudHeight * 0.3, cloudHeight * 0.4, 0, Math.PI * 2);
+          ctx.arc(x + width * 0.8, cloudY + cloudHeight * 0.5, cloudHeight * 0.3, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // 白いハイライト
+          ctx.fillStyle = '#ffffff';
+          ctx.globalAlpha = 0.6;
+          ctx.arc(x + width * 0.3, cloudY + cloudHeight * 0.4, cloudHeight * 0.2, 0, Math.PI * 2);
+          ctx.fill();
+          break;
+          
+        case 'ice':
+          // 氷結晶プラットフォーム（水色・光沢）
+          const iceGradient = ctx.createLinearGradient(x, y, x, y + height);
+          iceGradient.addColorStop(0, '#e0f7ff');
+          iceGradient.addColorStop(0.5, '#81d4fa');
+          iceGradient.addColorStop(1, '#0277bd');
+          ctx.fillStyle = iceGradient;
+          
+          // 氷結晶の描画
+          ctx.beginPath();
+          ctx.moveTo(x, y + height);
+          ctx.lineTo(x + width * 0.2, y);
+          ctx.lineTo(x + width * 0.4, y + height * 0.3);
+          ctx.lineTo(x + width * 0.6, y);
+          ctx.lineTo(x + width * 0.8, y + height * 0.6);
+          ctx.lineTo(x + width, y + height);
+          ctx.closePath();
+          ctx.fill();
+          
+          // 光沢エフェクト
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2;
+          ctx.globalAlpha = 0.7;
+          ctx.stroke();
+          break;
+          
+        default: // ground
+          // 従来の地面
+          ctx.fillStyle = '#4a5568';
+          ctx.strokeStyle = '#6b7280';
+          ctx.lineWidth = 2;
+          ctx.fillRect(x, y, width, height);
+          ctx.strokeRect(x, y, width, height);
+          break;
+      }
+      
+      ctx.restore();
     }
 
     // プレイヤー描画（星の精霊、カメラオフセット適用）
