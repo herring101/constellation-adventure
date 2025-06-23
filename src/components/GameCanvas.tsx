@@ -264,9 +264,40 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ width, height }) => {
     
     ctx.restore();
 
+    // タッチガイド描画（スマホのみ）
+    if (width <= 400) { // スマホサイズの場合
+      ctx.save();
+      ctx.globalAlpha = 0.3;
+      
+      // 左移動エリア
+      ctx.fillStyle = '#ff6b6b';
+      ctx.fillRect(0, 0, width * 0.5, height * 0.8);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '20px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('◀️', width * 0.25, height * 0.4);
+      ctx.fillText('左移動', width * 0.25, height * 0.5);
+      
+      // 右移動エリア
+      ctx.fillStyle = '#4ecdc4';
+      ctx.fillRect(width * 0.5, 0, width * 0.5, height * 0.8);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText('▶️', width * 0.75, height * 0.4);
+      ctx.fillText('右移動', width * 0.75, height * 0.5);
+      
+      // ジャンプエリア
+      ctx.fillStyle = '#45b7d1';
+      ctx.fillRect(0, height * 0.8, width, height * 0.2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText('⬆️ ジャンプ', width * 0.5, height * 0.9);
+      
+      ctx.restore();
+    }
+
     // UI描画
     ctx.fillStyle = '#ffffff';
     ctx.font = '16px Arial';
+    ctx.textAlign = 'left';
     ctx.fillText('🌟 Stellar Adventure', 10, 30);
     ctx.fillText(`X: ${Math.round(player.x)} Y: ${Math.round(player.y)}`, 10, 55);
     ctx.fillText(player.grounded ? '接地中' : '空中', 10, 80);
@@ -278,7 +309,10 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ width, height }) => {
       width={width}
       height={height}
       className="border border-gray-600 bg-gray-900"
-      style={{ imageRendering: 'pixelated' }}
+      style={{ 
+        imageRendering: 'pixelated',
+        touchAction: 'none' // スマホでのスクロール防止
+      }}
     />
   );
 };

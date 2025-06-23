@@ -4,7 +4,9 @@ import { GameCanvas } from '@/components/GameCanvas';
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-purple-900 via-blue-900 to-indigo-900 flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-b from-purple-900 via-blue-900 to-indigo-900 flex flex-col items-center justify-center p-4 overflow-hidden">
+      {/* 横持ち全画面対応 */}
+      <div className="landscape-fullscreen">
       <header className="text-center mb-6">
         <h1 className="text-4xl font-bold text-white mb-2 bg-gradient-to-r from-yellow-400 to-yellow-200 bg-clip-text text-transparent">
           ⭐ Stellar Adventure ⭐
@@ -41,12 +43,15 @@ export default function Home() {
           </div>
         </div>
         
-        <div className="bg-gray-800 p-4 rounded-lg shadow-2xl w-full max-w-4xl">
+        <div className="bg-gray-800 p-4 rounded-lg shadow-2xl w-full max-w-4xl game-container">
           <div className="hidden sm:block">
             <GameCanvas width={800} height={600} />
           </div>
-          <div className="block sm:hidden">
+          <div className="block sm:hidden portrait-game">
             <GameCanvas width={350} height={400} />
+          </div>
+          <div className="hidden landscape-game">
+            <GameCanvas width={800} height={400} />
           </div>
         </div>
         
@@ -60,6 +65,7 @@ export default function Home() {
       <footer className="mt-8 text-center text-gray-500 text-xs">
         <p>Developed by Stella & Seira ✨</p>
       </footer>
+      </div>
     </div>
   );
 }
