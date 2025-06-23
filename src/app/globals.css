@@ -177,3 +177,33 @@ body {
   font-size: 0.75rem;
   line-height: 1rem;
 }
+
+.w-full {
+  width: 100%;
+}
+
+.max-w-4xl {
+  max-width: 56rem;
+}
+
+.space-y-1 > * + * {
+  margin-top: 0.25rem;
+}
+
+.hidden {
+  display: none;
+}
+
+.block {
+  display: block;
+}
+
+@media (min-width: 640px) {
+  .sm\:block {
+    display: block;
+  }
+  
+  .sm\:hidden {
+    display: none;
+  }
+}

@@ -24,16 +24,30 @@ export default function Home() {
       
       <main className="flex flex-col items-center">
         <div className="mb-4 text-center">
-          <p className="text-gray-300 text-sm">
-            🎮 矢印キーまたはWASDで操作 | スペースキーでジャンプ
-          </p>
-          <p className="text-gray-400 text-xs mt-1">
-            📱 スマホの場合: 画面タッチで操作
-          </p>
+          <div className="hidden sm:block">
+            <p className="text-gray-300 text-sm">
+              🎮 矢印キーまたはWASDで移動 | スペースキーでジャンプ
+            </p>
+          </div>
+          <div className="block sm:hidden">
+            <p className="text-gray-300 text-sm mb-2">
+              📱 スマホ操作方法
+            </p>
+            <div className="text-gray-400 text-xs space-y-1">
+              <p>◀️ 画面左半分タッチ = 左移動</p>
+              <p>▶️ 画面右半分タッチ = 右移動</p>
+              <p>⬆️ 画面下部タッチ = ジャンプ</p>
+            </div>
+          </div>
         </div>
         
-        <div className="bg-gray-800 p-4 rounded-lg shadow-2xl">
-          <GameCanvas width={800} height={600} />
+        <div className="bg-gray-800 p-4 rounded-lg shadow-2xl w-full max-w-4xl">
+          <div className="hidden sm:block">
+            <GameCanvas width={800} height={600} />
+          </div>
+          <div className="block sm:hidden">
+            <GameCanvas width={350} height={400} />
+          </div>
         </div>
         
         <div className="mt-4 text-center">
