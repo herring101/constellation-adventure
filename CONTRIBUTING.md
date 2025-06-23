@@ -149,5 +149,30 @@ By contributing to Stellar Adventure, you agree that your contributions will be 
 
 ---
 
+## Recommended Technology Stack
+
+Based on our development experience, we recommend the following stable configuration:
+
+### Core Technologies
+- **Next.js 15** (App Router)
+- **TypeScript** (strict mode)
+- **Pure CSS or CSS Modules** (avoid Tailwind CSS v4 beta)
+- **Canvas API** (for game rendering)
+- **SVG** (for game assets)
+
+### Deployment Workflow
+1. **Setup Phase**: Basic page with minimal dependencies
+2. **Build Verification**: Ensure `npm run build` succeeds
+3. **Game Components**: Add Canvas-based game components
+4. **Incremental Features**: Add features one by one
+5. **Deploy Testing**: Test each major change on Vercel
+
+### Lessons Learned
+- Always check official documentation when encountering frequent errors
+- Avoid beta versions in production (e.g., Tailwind CSS v4)
+- Use stable, well-documented libraries
+- Test builds locally before pushing to deployment
+- Document successful configurations for future reference
+
 ## Special Thanks
 This project was built collaboratively by Stella and Seira as part of a live coding stream. We appreciate all contributions to make this game even better! ⭐
