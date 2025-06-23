@@ -15,6 +15,9 @@ export interface GameState {
     velocityY: number;
     grounded: boolean;
   };
+  camera: {
+    x: number;
+  };
   platforms: Array<{
     x: number;
     y: number;
@@ -36,11 +39,18 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ width, height }) => {
       velocityY: 0,
       grounded: false,
     },
+    camera: {
+      x: 0,
+    },
     platforms: [
-      { x: 0, y: height - 32, width: width, height: 32 }, // 地面
+      { x: 0, y: height - 32, width: width * 3, height: 32 }, // 長い地面
       { x: 200, y: height - 120, width: 128, height: 32 }, // プラットフォーム1
       { x: 400, y: height - 200, width: 128, height: 32 }, // プラットフォーム2
       { x: 600, y: height - 280, width: 128, height: 32 }, // プラットフォーム3
+      { x: 800, y: height - 160, width: 128, height: 32 }, // プラットフォーム4
+      { x: 1000, y: height - 240, width: 128, height: 32 }, // プラットフォーム5
+      { x: 1200, y: height - 180, width: 128, height: 32 }, // プラットフォーム6
+      { x: 1400, y: height - 300, width: 128, height: 32 }, // プラットフォーム7
     ],
     keys: new Set(),
   });
@@ -171,8 +181,16 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ width, height }) => {
           }
         }
 
-        // 画面端の制限
-        player.x = Math.max(16, Math.min(width - 16, player.x));
+        // カメラ更新（プレイヤーが画面中央を超えたらスクロール）
+        const playerScreenX = player.x - newState.camera.x;
+        if (playerScreenX > width * 0.6) {
+          newState.camera.x = player.x - width * 0.6;
+        } else if (playerScreenX < width * 0.3 && newState.camera.x > 0) {
+          newState.camera.x = Math.max(0, player.x - width * 0.3);
+        }
+
+        // 左端の制限（カメラを考慮）
+        player.x = Math.max(16, player.x);
 
         // 落下時のリセット
         if (player.y > height + 50) {
@@ -180,6 +198,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ width, height }) => {
           player.y = height - 100;
           player.velocityX = 0;
           player.velocityY = 0;
+          newState.camera.x = 0; // カメラもリセット
         }
 
         return { ...newState, player };
@@ -219,19 +238,24 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ width, height }) => {
       ctx.fill();
     }
 
-    // プラットフォーム描画
+    // プラットフォーム描画（カメラオフセット適用）
     ctx.fillStyle = '#4a5568';
     ctx.strokeStyle = '#6b7280';
     ctx.lineWidth = 2;
     for (const platform of gameState.platforms) {
-      ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
-      ctx.strokeRect(platform.x, platform.y, platform.width, platform.height);
+      const screenX = platform.x - gameState.camera.x;
+      // 画面内にある場合のみ描画
+      if (screenX + platform.width >= 0 && screenX <= width) {
+        ctx.fillRect(screenX, platform.y, platform.width, platform.height);
+        ctx.strokeRect(screenX, platform.y, platform.width, platform.height);
+      }
     }
 
-    // プレイヤー描画（星の精霊）
+    // プレイヤー描画（星の精霊、カメラオフセット適用）
     const player = gameState.player;
+    const playerScreenX = player.x - gameState.camera.x;
     ctx.save();
-    ctx.translate(player.x, player.y);
+    ctx.translate(playerScreenX, player.y);
     
     // 光る効果
     ctx.shadowColor = '#ffff00';
@@ -299,8 +323,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ width, height }) => {
     ctx.font = '16px Arial';
     ctx.textAlign = 'left';
     ctx.fillText('🌟 Stellar Adventure', 10, 30);
-    ctx.fillText(`X: ${Math.round(player.x)} Y: ${Math.round(player.y)}`, 10, 55);
-    ctx.fillText(player.grounded ? '接地中' : '空中', 10, 80);
+    ctx.fillText(`ワールド座標: ${Math.round(player.x)}`, 10, 55);
+    ctx.fillText(`カメラ: ${Math.round(gameState.camera.x)}`, 10, 80);
+    ctx.fillText(player.grounded ? '接地中' : '空中', 10, 105);
   }, [gameState, width, height]);
 
   return (
