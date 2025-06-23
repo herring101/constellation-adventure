@@ -34,8 +34,8 @@ export default function Home() {
         </div>
         
         <div className="mt-4 text-center">
-          <p className="text-gray-300 text-sm">
-            🎮 星の精霊を操作して星座の力を集めよう！
+          <p className="text-gray-400 text-sm">
+            🌟 リアルタイム開発配信中！
           </p>
         </div>
       </main>
