@@ -88,38 +88,64 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ width, height }) => {
 
     const handleTouchStart = (e: TouchEvent) => {
       e.preventDefault();
-      const touch = e.touches[0];
       const rect = canvas.getBoundingClientRect();
-      const x = touch.clientX - rect.left;
-      const y = touch.clientY - rect.top;
       
-      // タッチ位置に基づく操作判定
-      if (y > height * 0.8) { // 下部80%はジャンプ
-        setGameState(prev => ({
-          ...prev,
-          keys: new Set(prev.keys).add(' '),
-        }));
-      } else if (x < width * 0.5) { // 左半分は左移動
-        setGameState(prev => ({
-          ...prev,
-          keys: new Set(prev.keys).add('arrowleft'),
-        }));
-      } else { // 右半分は右移動
-        setGameState(prev => ({
-          ...prev,
-          keys: new Set(prev.keys).add('arrowright'),
-        }));
+      // 全てのタッチポイントを処理
+      for (let i = 0; i < e.touches.length; i++) {
+        const touch = e.touches[i];
+        const x = touch.clientX - rect.left;
+        const y = touch.clientY - rect.top;
+        
+        // タッチ位置に基づく操作判定
+        if (y > height * 0.8) { // 下部80%はジャンプ
+          setGameState(prev => ({
+            ...prev,
+            keys: new Set(prev.keys).add(' '),
+          }));
+        } else if (x < width * 0.5) { // 左半分は左移動
+          setGameState(prev => ({
+            ...prev,
+            keys: new Set(prev.keys).add('arrowleft'),
+          }));
+        } else { // 右半分は右移動
+          setGameState(prev => ({
+            ...prev,
+            keys: new Set(prev.keys).add('arrowright'),
+          }));
+        }
       }
     };
 
     const handleTouchEnd = (e: TouchEvent) => {
       e.preventDefault();
-      // 全てのタッチ操作をリセット
+      const rect = canvas.getBoundingClientRect();
+      
+      // 残っているタッチポイントを再評価
+      const activeKeys = new Set<string>();
+      
+      for (let i = 0; i < e.touches.length; i++) {
+        const touch = e.touches[i];
+        const x = touch.clientX - rect.left;
+        const y = touch.clientY - rect.top;
+        
+        if (y > height * 0.8) {
+          activeKeys.add(' ');
+        } else if (x < width * 0.5) {
+          activeKeys.add('arrowleft');
+        } else {
+          activeKeys.add('arrowright');
+        }
+      }
+      
+      // タッチ関連のキーを更新
       setGameState(prev => {
         const newKeys = new Set(prev.keys);
+        // タッチ関連のキーをクリア
         newKeys.delete(' ');
         newKeys.delete('arrowleft');
         newKeys.delete('arrowright');
+        // アクティブなキーを追加
+        activeKeys.forEach(key => newKeys.add(key));
         return { ...prev, keys: newKeys };
       });
     };
@@ -288,35 +314,6 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ width, height }) => {
     
     ctx.restore();
 
-    // タッチガイド描画（スマホのみ）
-    if (width <= 400) { // スマホサイズの場合
-      ctx.save();
-      ctx.globalAlpha = 0.3;
-      
-      // 左移動エリア
-      ctx.fillStyle = '#ff6b6b';
-      ctx.fillRect(0, 0, width * 0.5, height * 0.8);
-      ctx.fillStyle = '#ffffff';
-      ctx.font = '20px Arial';
-      ctx.textAlign = 'center';
-      ctx.fillText('◀️', width * 0.25, height * 0.4);
-      ctx.fillText('左移動', width * 0.25, height * 0.5);
-      
-      // 右移動エリア
-      ctx.fillStyle = '#4ecdc4';
-      ctx.fillRect(width * 0.5, 0, width * 0.5, height * 0.8);
-      ctx.fillStyle = '#ffffff';
-      ctx.fillText('▶️', width * 0.75, height * 0.4);
-      ctx.fillText('右移動', width * 0.75, height * 0.5);
-      
-      // ジャンプエリア
-      ctx.fillStyle = '#45b7d1';
-      ctx.fillRect(0, height * 0.8, width, height * 0.2);
-      ctx.fillStyle = '#ffffff';
-      ctx.fillText('⬆️ ジャンプ', width * 0.5, height * 0.9);
-      
-      ctx.restore();
-    }
 
     // UI描画
     ctx.fillStyle = '#ffffff';
