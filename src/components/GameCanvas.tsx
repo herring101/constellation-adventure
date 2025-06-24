@@ -299,13 +299,21 @@ export const GameCanvas: FC<GameCanvasProps> = ({ width, height, onGameComplete,
         const x = touch.clientX - rect.left;
         const y = touch.clientY - rect.top;
         
+        // Canvas の実際のサイズと表示サイズの比率を計算
+        const scaleX = width / rect.width;
+        const scaleY = height / rect.height;
+        
+        // スケーリングを考慮した座標に変換
+        const gameX = x * scaleX;
+        const gameY = y * scaleY;
+        
         // タッチ位置に基づく操作判定
-        if (y > height * 0.8) { // 下部80%はジャンプ
+        if (gameY > height * 0.8) { // 下部80%はジャンプ
           setGameState(prev => ({
             ...prev,
             keys: new Set(prev.keys).add(' '),
           }));
-        } else if (x < width * 0.5) { // 左半分は左移動
+        } else if (gameX < width * 0.5) { // 左半分は左移動
           setGameState(prev => ({
             ...prev,
             keys: new Set(prev.keys).add('arrowleft'),
@@ -331,9 +339,17 @@ export const GameCanvas: FC<GameCanvasProps> = ({ width, height, onGameComplete,
         const x = touch.clientX - rect.left;
         const y = touch.clientY - rect.top;
         
-        if (y > height * 0.8) {
+        // Canvas の実際のサイズと表示サイズの比率を計算
+        const scaleX = width / rect.width;
+        const scaleY = height / rect.height;
+        
+        // スケーリングを考慮した座標に変換
+        const gameX = x * scaleX;
+        const gameY = y * scaleY;
+        
+        if (gameY > height * 0.8) {
           activeKeys.add(' ');
-        } else if (x < width * 0.5) {
+        } else if (gameX < width * 0.5) {
           activeKeys.add('arrowleft');
         } else {
           activeKeys.add('arrowright');

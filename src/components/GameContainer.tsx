@@ -121,11 +121,24 @@ interface TitleScreenProps {
 }
 
 const TitleScreen: FC<TitleScreenProps> = ({ width, height, onStartGame, onOpenSettings }) => {
+  const titleScreenRef = useRef<HTMLDivElement>(null);
+  const { isFullscreen, toggleFullscreen } = useFullscreen(titleScreenRef);
+  
   return (
     <div
-      className="flex flex-col items-center justify-center bg-gradient-to-b from-indigo-900 via-purple-900 to-blue-900 relative overflow-hidden"
+      ref={titleScreenRef}
+      className={`flex flex-col items-center justify-center bg-gradient-to-b from-indigo-900 via-purple-900 to-blue-900 relative overflow-hidden ${isFullscreen ? 'fullscreen-game' : ''}`}
       style={{ width, height }}
     >
+      {/* 全画面ボタン */}
+      <button
+        onClick={toggleFullscreen}
+        className="absolute top-4 left-4 z-20 px-4 py-2 bg-black bg-opacity-50 text-white rounded-full shadow-lg hover:bg-opacity-70 transition-all"
+        title={isFullscreen ? '全画面を終了' : '全画面表示'}
+      >
+        {isFullscreen ? '🗙' : '⛶'}
+      </button>
+      
       {/* 背景の星アニメーション */}
       <div className="absolute inset-0">
         {Array.from({ length: 50 }).map((_, i) => (
