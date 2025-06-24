@@ -57,6 +57,7 @@ export interface GameState {
   keys: Set<string>;
   gameCompleted: boolean;
   isPerfectScore: boolean; // 25個全て集めたかどうか
+  gameOverTriggered: boolean; // ゲームオーバー処理の重複防止
   goal: {
     x: number;
     y: number;
@@ -214,6 +215,7 @@ export const GameCanvas: FC<GameCanvasProps> = ({ width, height, onGameComplete 
     keys: new Set(),
     gameCompleted: false,
     isPerfectScore: false,
+    gameOverTriggered: false,
     goal: {
       x: 3920,
       y: height - 180,  // 地面の上に配置
@@ -413,37 +415,46 @@ export const GameCanvas: FC<GameCanvasProps> = ({ width, height, onGameComplete 
         // 左端の制限（カメラを考慮）
         player.x = Math.max(16, player.x);
 
-        // 穴への落下チェック（地面レベル付近で穴エリアにいる場合）
-        const groundLevel = height - 32;
-        const pitAreas = [
-          {x: 350, width: 100}, // 穴1
-          {x: 750, width: 100}, // 穴2  
-          {x: 1250, width: 100}, // 穴3
-          {x: 1850, width: 100}, // 穴4
-          {x: 2350, width: 100}, // 穴5
-          {x: 2850, width: 100}, // 穴6
-          {x: 3450, width: 100}, // 穴7
-        ];
-        
-        for (const pit of pitAreas) {
-          if (player.x > pit.x && player.x < pit.x + pit.width && player.y > groundLevel - 50) {
-            // ゲームオーバーSE再生
-            soundManagerRef.current?.playSE('gameOver');
-            soundManagerRef.current?.stopBGM();
-            
-            // 少し遅延してからゲームオーバー画面へ
-            setTimeout(() => {
-              if (onGameComplete) {
-                onGameComplete(newState.score, true); // 穴に落ちてゲームオーバー
-              }
-            }, 500); // 0.5秒後
-            
-            return prev;
+        // 穴への落下チェック（実際に地面より下に落ちた場合のみ）
+        if (!newState.gameOverTriggered) {
+          const groundLevel = height - 32;
+          const pitAreas = [
+            {x: 350, width: 100}, // 穴1
+            {x: 750, width: 100}, // 穴2  
+            {x: 1250, width: 100}, // 穴3
+            {x: 1850, width: 100}, // 穴4
+            {x: 2350, width: 100}, // 穴5
+            {x: 2850, width: 100}, // 穴6
+            {x: 3450, width: 100}, // 穴7
+          ];
+          
+          for (const pit of pitAreas) {
+            // プレイヤーが実際に地面レベルより下に落ちて、かつ穴の範囲内にいる場合のみゲームオーバー
+            if (player.x > pit.x + 10 && player.x < pit.x + pit.width - 10 && player.y > groundLevel + 5) {
+              // ゲームオーバーフラグ設定
+              newState.gameOverTriggered = true;
+              
+              // ゲームオーバーSE再生
+              soundManagerRef.current?.playSE('gameOver');
+              soundManagerRef.current?.stopBGM();
+              
+              // 少し遅延してからゲームオーバー画面へ
+              setTimeout(() => {
+                if (onGameComplete) {
+                  onGameComplete(newState.score, true); // 穴に落ちてゲームオーバー
+                }
+              }, 500); // 0.5秒後
+              
+              return { ...newState, player, items, enemies, score: newScore, isPerfectScore };
+            }
           }
         }
 
         // 画面下への落下時のゲームオーバー
-        if (player.y > height + 50) {
+        if (!newState.gameOverTriggered && player.y > height + 50) {
+          // ゲームオーバーフラグ設定
+          newState.gameOverTriggered = true;
+          
           // ゲームオーバーSE再生
           soundManagerRef.current?.playSE('gameOver');
           soundManagerRef.current?.stopBGM();
@@ -455,7 +466,7 @@ export const GameCanvas: FC<GameCanvasProps> = ({ width, height, onGameComplete 
             }
           }, 500); // 0.5秒後
           
-          return prev; // 状態更新を停止
+          return { ...newState, player, items, enemies, score: newScore, isPerfectScore }; // 状態更新を停止
         }
         
         // 敵の移動とプレイヤーとの当たり判定
@@ -476,12 +487,15 @@ export const GameCanvas: FC<GameCanvasProps> = ({ width, height, onGameComplete 
             }
             
             // プレイヤーとの当たり判定
-            if (
+            if (!newState.gameOverTriggered &&
               player.x + 12 > enemy.x - enemy.width/2 &&
               player.x - 12 < enemy.x + enemy.width/2 &&
               player.y + 12 > enemy.y - enemy.height/2 &&
               player.y - 12 < enemy.y + enemy.height/2
             ) {
+              // ゲームオーバーフラグ設定
+              newState.gameOverTriggered = true;
+              
               // ゲームオーバーSE再生
               soundManagerRef.current?.playSE('gameOver');
               soundManagerRef.current?.stopBGM();
@@ -493,7 +507,7 @@ export const GameCanvas: FC<GameCanvasProps> = ({ width, height, onGameComplete 
                 }
               }, 500); // 0.5秒後
               
-              return prev;
+              return { ...newState, player, items, enemies, score: newScore, isPerfectScore };
             }
           } else if (enemy.type === 'blackhole') {
             // ブラックホールとプレイヤーの距離計算
@@ -502,7 +516,10 @@ export const GameCanvas: FC<GameCanvasProps> = ({ width, height, onGameComplete 
             const distance = Math.sqrt(dx * dx + dy * dy);
             
             // 即死範囲チェック
-            if (enemy.killRadius && distance < enemy.killRadius) {
+            if (!newState.gameOverTriggered && enemy.killRadius && distance < enemy.killRadius) {
+              // ゲームオーバーフラグ設定
+              newState.gameOverTriggered = true;
+              
               // ゲームオーバーSE再生
               soundManagerRef.current?.playSE('gameOver');
               soundManagerRef.current?.stopBGM();
@@ -514,7 +531,7 @@ export const GameCanvas: FC<GameCanvasProps> = ({ width, height, onGameComplete 
                 }
               }, 500); // 0.5秒後
               
-              return prev;
+              return { ...newState, player, items, enemies, score: newScore, isPerfectScore };
             }
             
             // 引き寄せ効果
