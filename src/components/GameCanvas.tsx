@@ -70,6 +70,7 @@ export const GameCanvas: FC<GameCanvasProps> = ({ width, height, onGameComplete 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameRef = useRef<number>(0);
   const soundManagerRef = useRef<SoundManager | null>(null);
+  const gameOverSEPlayedRef = useRef<boolean>(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   
   const [gameState, setGameState] = useState<GameState>({
@@ -434,17 +435,6 @@ export const GameCanvas: FC<GameCanvasProps> = ({ width, height, onGameComplete 
               // ゲームオーバーフラグ設定
               newState.gameOverTriggered = true;
               
-              // ゲームオーバーSE再生
-              soundManagerRef.current?.playSE('gameOver');
-              soundManagerRef.current?.stopBGM();
-              
-              // 少し遅延してからゲームオーバー画面へ
-              setTimeout(() => {
-                if (onGameComplete) {
-                  onGameComplete(newState.score, true); // 穴に落ちてゲームオーバー
-                }
-              }, 500); // 0.5秒後
-              
               return { ...newState, player, items, enemies, score: newScore, isPerfectScore };
             }
           }
@@ -454,17 +444,6 @@ export const GameCanvas: FC<GameCanvasProps> = ({ width, height, onGameComplete 
         if (!newState.gameOverTriggered && player.y > height + 50) {
           // ゲームオーバーフラグ設定
           newState.gameOverTriggered = true;
-          
-          // ゲームオーバーSE再生
-          soundManagerRef.current?.playSE('gameOver');
-          soundManagerRef.current?.stopBGM();
-          
-          // 少し遅延してからゲームオーバー画面へ
-          setTimeout(() => {
-            if (onGameComplete) {
-              onGameComplete(newState.score, true); // isGameOver = true
-            }
-          }, 500); // 0.5秒後
           
           return { ...newState, player, items, enemies, score: newScore, isPerfectScore }; // 状態更新を停止
         }
@@ -496,17 +475,6 @@ export const GameCanvas: FC<GameCanvasProps> = ({ width, height, onGameComplete 
               // ゲームオーバーフラグ設定
               newState.gameOverTriggered = true;
               
-              // ゲームオーバーSE再生
-              soundManagerRef.current?.playSE('gameOver');
-              soundManagerRef.current?.stopBGM();
-              
-              // 少し遅延してからゲームオーバー画面へ
-              setTimeout(() => {
-                if (onGameComplete) {
-                  onGameComplete(newState.score, true);
-                }
-              }, 500); // 0.5秒後
-              
               return { ...newState, player, items, enemies, score: newScore, isPerfectScore };
             }
           } else if (enemy.type === 'blackhole') {
@@ -519,17 +487,6 @@ export const GameCanvas: FC<GameCanvasProps> = ({ width, height, onGameComplete 
             if (!newState.gameOverTriggered && enemy.killRadius && distance < enemy.killRadius) {
               // ゲームオーバーフラグ設定
               newState.gameOverTriggered = true;
-              
-              // ゲームオーバーSE再生
-              soundManagerRef.current?.playSE('gameOver');
-              soundManagerRef.current?.stopBGM();
-              
-              // 少し遅延してからゲームオーバー画面へ
-              setTimeout(() => {
-                if (onGameComplete) {
-                  onGameComplete(newState.score, true);
-                }
-              }, 500); // 0.5秒後
               
               return { ...newState, player, items, enemies, score: newScore, isPerfectScore };
             }
@@ -596,6 +553,24 @@ export const GameCanvas: FC<GameCanvasProps> = ({ width, height, onGameComplete 
       }
     };
   }, [width, height]);
+
+  // ゲームオーバーSE管理（フラグ監視）
+  useEffect(() => {
+    if (gameState.gameOverTriggered && !gameOverSEPlayedRef.current) {
+      gameOverSEPlayedRef.current = true;
+      
+      // ゲームオーバーSE再生
+      soundManagerRef.current?.playSE('gameOver');
+      soundManagerRef.current?.stopBGM();
+      
+      // 少し遅延してからゲームオーバー画面へ
+      setTimeout(() => {
+        if (onGameComplete) {
+          onGameComplete(gameState.score, true);
+        }
+      }, 500); // 0.5秒後
+    }
+  }, [gameState.gameOverTriggered, gameState.score, onGameComplete]);
 
   // ゲーム完了の監視（ゴールとの当たり判定）
   useEffect(() => {
