@@ -43,7 +43,7 @@ export class SoundManager {
       jump: '/sounds/jump.wav',
       collect: '/sounds/collect.wav',
       goal: '/sounds/goal.wav',
-      gameOver: '/sounds/collect.wav' // 一時的にcollectと同じファイルを使用
+      gameOver: '/sounds/death.wav' // 専用のゲームオーバー音（宇宙船爆発音）
     };
 
     const loadPromises = Object.entries(soundFiles).map(async ([key, url]) => {
@@ -94,6 +94,8 @@ export class SoundManager {
     // 重複防止のため、既存のSEが再生中でも新しいインスタンスを作成
     const source = this.audioContext.createBufferSource();
     source.buffer = buffer;
+    
+    // ゲームオーバー音はcollect音をそのまま使用（違いを明確にするため）
     source.connect(this.seGainNode);
     
     // デバッグ用ログ追加
@@ -112,12 +114,27 @@ export class SoundManager {
   setBGMVolume(volume: number): void {
     if (this.bgmGainNode) {
       this.bgmGainNode.gain.value = Math.max(0, Math.min(1, volume));
+      console.log(`[SoundManager] BGM volume set to: ${volume} (${Math.round(volume * 100)}%)`);
+    } else {
+      console.warn('[SoundManager] BGM gain node not available');
     }
   }
 
   setSEVolume(volume: number): void {
     if (this.seGainNode) {
       this.seGainNode.gain.value = Math.max(0, Math.min(1, volume));
+      console.log(`[SoundManager] SE volume set to: ${volume} (${Math.round(volume * 100)}%)`);
+    } else {
+      console.warn('[SoundManager] SE gain node not available');
     }
+  }
+  
+  // ゲインノードへの直接アクセス（設定画面用）
+  getBGMGainNode() {
+    return this.bgmGainNode;
+  }
+  
+  getSEGainNode() {
+    return this.seGainNode;
   }
 }

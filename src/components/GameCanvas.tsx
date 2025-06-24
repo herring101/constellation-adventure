@@ -8,6 +8,7 @@ interface GameCanvasProps {
   width: number;
   height: number;
   onGameComplete?: (score: number, isGameOver?: boolean) => void;
+  isPaused?: boolean;
 }
 
 interface Platform {
@@ -66,10 +67,18 @@ export interface GameState {
   };
 }
 
-export const GameCanvas: FC<GameCanvasProps> = ({ width, height, onGameComplete }) => {
+export const GameCanvas: FC<GameCanvasProps> = ({ width, height, onGameComplete, isPaused = false }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameRef = useRef<number>(0);
   const soundManagerRef = useRef<SoundManager | null>(null);
+  
+  // グローバルにSoundManagerインスタンスを公開（設定画面からアクセスするため）
+  useEffect(() => {
+    if (soundManagerRef.current && typeof window !== 'undefined') {
+      (window as unknown as Record<string, unknown>).stellarSoundManager = soundManagerRef.current;
+      console.log('[GameCanvas] SoundManager instance exposed globally');
+    }
+  }, [soundManagerRef.current]);
   const gameOverSEPlayedRef = useRef<boolean>(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   
@@ -358,8 +367,8 @@ export const GameCanvas: FC<GameCanvasProps> = ({ width, height, onGameComplete 
   useEffect(() => {
     const gameLoop = () => {
       setGameState(prev => {
-        // ゲーム完了後は更新を停止
-        if (prev.gameCompleted) return prev;
+        // ゲーム完了後またはポーズ中は更新を停止
+        if (prev.gameCompleted || isPaused) return prev;
         
         const newState = { ...prev };
         const player = { ...newState.player };
@@ -555,7 +564,7 @@ export const GameCanvas: FC<GameCanvasProps> = ({ width, height, onGameComplete 
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [width, height]);
+  }, [width, height, isPaused]);
 
   // ゲームオーバーSE管理（フラグ監視）
   useEffect(() => {
@@ -1220,6 +1229,21 @@ export const GameCanvas: FC<GameCanvasProps> = ({ width, height, onGameComplete 
     ctx.fillText(soundEnabled ? '🔊' : '🔇', width - 30, 32);
     ctx.restore();
     
+    // 一時停止オーバーレイ
+    if (isPaused) {
+      ctx.save();
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+      ctx.fillRect(0, 0, width, height);
+      
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 36px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('⏸️ 一時停止', width / 2, height / 2);
+      ctx.font = '20px Arial';
+      ctx.fillText('設定画面を閉じてゲーム再開', width / 2, height / 2 + 50);
+      ctx.restore();
+    }
+    
     // ゴール到達チェック（当たり判定ベース）
     const isAtGoal = 
       player.x + 16 > gameState.goal.x &&
@@ -1237,7 +1261,7 @@ export const GameCanvas: FC<GameCanvasProps> = ({ width, height, onGameComplete 
       ctx.font = '18px Arial';
       ctx.fillText(`最終スコア: ${gameState.score}`, width / 2, height / 2 + 30);
     }
-  }, [gameState, width, height, soundEnabled]);
+  }, [gameState, width, height, soundEnabled, isPaused]);
 
   // クリック処理（サウンドボタン）
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {

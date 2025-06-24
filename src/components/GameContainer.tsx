@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { FC } from 'react';
 import { GameCanvas } from './GameCanvas';
 
@@ -14,6 +14,8 @@ interface GameContainerProps {
 export const GameContainer: FC<GameContainerProps> = ({ width, height }) => {
   const [currentScreen, setCurrentScreen] = useState<GameScreen>('title');
   const [finalScore, setFinalScore] = useState(0);
+  const [showSettings, setShowSettings] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
 
   const handleStartGame = () => {
     setCurrentScreen('playing');
@@ -39,15 +41,30 @@ export const GameContainer: FC<GameContainerProps> = ({ width, height }) => {
           width={width}
           height={height}
           onStartGame={handleStartGame}
+          onOpenSettings={() => setShowSettings(true)}
         />
       )}
 
       {currentScreen === 'playing' && (
-        <GameCanvas
-          width={width}
-          height={height}
-          onGameComplete={handleGameComplete}
-        />
+        <div className="relative">
+          <GameCanvas
+            width={width}
+            height={height}
+            onGameComplete={handleGameComplete}
+            isPaused={isPaused}
+          />
+          
+          {/* ゲーム中の設定ボタン */}
+          <button
+            onClick={() => {
+              setIsPaused(true);
+              setShowSettings(true);
+            }}
+            className="absolute top-4 right-4 z-10 px-4 py-2 bg-black bg-opacity-50 text-white rounded-full shadow-lg hover:bg-opacity-70 transition-all"
+          >
+            ⚙️
+          </button>
+        </div>
       )}
 
       {currentScreen === 'gameClear' && (
@@ -69,6 +86,17 @@ export const GameContainer: FC<GameContainerProps> = ({ width, height }) => {
           onBackToTitle={handleBackToTitle}
         />
       )}
+      
+      {showSettings && (
+        <SettingsModal
+          width={width}
+          height={height}
+          onClose={() => {
+            setShowSettings(false);
+            setIsPaused(false);
+          }}
+        />
+      )}
     </div>
   );
 };
@@ -77,9 +105,10 @@ interface TitleScreenProps {
   width: number;
   height: number;
   onStartGame: () => void;
+  onOpenSettings: () => void;
 }
 
-const TitleScreen: FC<TitleScreenProps> = ({ width, height, onStartGame }) => {
+const TitleScreen: FC<TitleScreenProps> = ({ width, height, onStartGame, onOpenSettings }) => {
   return (
     <div
       className="flex flex-col items-center justify-center bg-gradient-to-b from-indigo-900 via-purple-900 to-blue-900 relative overflow-hidden"
@@ -127,6 +156,17 @@ const TitleScreen: FC<TitleScreenProps> = ({ width, height, onStartGame }) => {
             <span className="text-3xl animate-pulse">✨</span>
           </span>
           <div className="absolute inset-0 rounded-full bg-gradient-to-r from-yellow-400/20 to-pink-400/20 blur-xl animate-pulse"></div>
+        </button>
+
+        {/* 設定ボタン */}
+        <button
+          onClick={onOpenSettings}
+          className="mt-8 px-8 py-4 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-500 hover:via-purple-500 hover:to-pink-500 text-white font-bold text-xl rounded-full shadow-2xl transform hover:scale-110 transition-all duration-300 active:scale-95 border-4 border-white/30 backdrop-blur-sm"
+        >
+          <span className="relative z-10 flex items-center gap-2">
+            <span className="text-2xl">⚙️</span>
+            設定
+          </span>
         </button>
 
         {/* 操作説明 */}
@@ -302,6 +342,127 @@ const GameOverScreen: FC<GameOverScreenProps> = ({
               タイトルへ戻る
             </span>
             <div className="absolute inset-0 rounded-full bg-gradient-to-r from-gray-400/20 to-gray-600/20 blur-xl"></div>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// 設定モーダルコンポーネント
+interface SettingsModalProps {
+  width: number;
+  height: number;
+  onClose: () => void;
+}
+
+const SettingsModal: FC<SettingsModalProps> = ({ width, height, onClose }) => {
+  const [bgmVolume, setBgmVolume] = useState(30);
+  const [seVolume, setSEVolume] = useState(50);
+  
+  // 初期化時に現在の音量を取得（もしSoundManagerが存在すれば）
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const soundManager = (window as unknown as Record<string, unknown>).stellarSoundManager as { 
+        getBGMGainNode?: () => { gain: { value: number } } | null; 
+        getSEGainNode?: () => { gain: { value: number } } | null; 
+      } | undefined;
+      
+      if (soundManager?.getBGMGainNode) {
+        const bgmNode = soundManager.getBGMGainNode();
+        if (bgmNode) {
+          setBgmVolume(Math.round(bgmNode.gain.value * 100));
+        }
+      }
+      if (soundManager?.getSEGainNode) {
+        const seNode = soundManager.getSEGainNode();
+        if (seNode) {
+          setSEVolume(Math.round(seNode.gain.value * 100));
+        }
+      }
+    }
+  }, []);
+  
+  // 音量変更時にSoundManagerに反映
+  const handleBGMVolumeChange = (value: number) => {
+    setBgmVolume(value);
+    // SoundManagerのインスタンスに音量設定を反映
+    if (typeof window !== 'undefined') {
+      const soundManager = (window as unknown as Record<string, unknown>).stellarSoundManager as { setBGMVolume: (volume: number) => void } | undefined;
+      if (soundManager && soundManager.setBGMVolume) {
+        soundManager.setBGMVolume(value / 100);
+        console.log(`[Settings] BGM Volume set to ${value}%`);
+      } else {
+        console.warn('[Settings] SoundManager not found for BGM volume');
+      }
+    }
+  };
+  
+  const handleSEVolumeChange = (value: number) => {
+    setSEVolume(value);
+    // SoundManagerのインスタンスに音量設定を反映
+    if (typeof window !== 'undefined') {
+      const soundManager = (window as unknown as Record<string, unknown>).stellarSoundManager as { setSEVolume: (volume: number) => void } | undefined;
+      if (soundManager && soundManager.setSEVolume) {
+        soundManager.setSEVolume(value / 100);
+        console.log(`[Settings] SE Volume set to ${value}%`);
+      } else {
+        console.warn('[Settings] SoundManager not found for SE volume');
+      }
+    }
+  };
+
+  return (
+    <div 
+      className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50"
+      onClick={onClose}
+    >
+      <div 
+        className="bg-gradient-to-b from-gray-800 to-gray-900 p-8 rounded-2xl shadow-2xl border-4 border-white/20 backdrop-blur-sm"
+        onClick={(e) => e.stopPropagation()}
+        style={{ width: Math.min(400, width * 0.8), maxHeight: height * 0.8 }}
+      >
+        <h2 className="text-3xl font-bold text-white mb-6 text-center">⚙️ 設定</h2>
+        
+        <div className="space-y-6">
+          {/* BGM音量 */}
+          <div>
+            <label className="block text-white text-lg font-semibold mb-2">
+              🎵 BGM音量: {bgmVolume}%
+            </label>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              value={bgmVolume}
+              onChange={(e) => handleBGMVolumeChange(Number(e.target.value))}
+              className="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer slider"
+            />
+          </div>
+          
+          {/* SE音量 */}
+          <div>
+            <label className="block text-white text-lg font-semibold mb-2">
+              🔊 効果音音量: {seVolume}%
+            </label>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              value={seVolume}
+              onChange={(e) => handleSEVolumeChange(Number(e.target.value))}
+              className="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer slider"
+            />
+          </div>
+        </div>
+        
+        {/* 閉じるボタン */}
+        <div className="mt-8 text-center">
+          <button
+            onClick={onClose}
+            className="px-8 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold rounded-full shadow-lg transform hover:scale-105 transition-all duration-200"
+          >
+            閉じる
           </button>
         </div>
       </div>
