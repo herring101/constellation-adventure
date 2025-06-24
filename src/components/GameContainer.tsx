@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { FC } from 'react';
 import { GameCanvas } from './GameCanvas';
+import { useFullscreen } from '@/hooks/useFullscreen';
 
 type GameScreen = 'title' | 'playing' | 'gameOver' | 'gameClear';
 
@@ -16,6 +17,8 @@ export const GameContainer: FC<GameContainerProps> = ({ width, height }) => {
   const [finalScore, setFinalScore] = useState(0);
   const [showSettings, setShowSettings] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const gameContainerRef = useRef<HTMLDivElement>(null);
+  const { isFullscreen, toggleFullscreen } = useFullscreen(gameContainerRef);
 
   const handleStartGame = () => {
     setCurrentScreen('playing');
@@ -35,7 +38,7 @@ export const GameContainer: FC<GameContainerProps> = ({ width, height }) => {
   };
 
   return (
-    <div className="relative">
+    <div ref={gameContainerRef} className={`relative ${isFullscreen ? 'fullscreen-game' : ''}`}>
       {currentScreen === 'title' && (
         <TitleScreen
           width={width}
@@ -53,6 +56,15 @@ export const GameContainer: FC<GameContainerProps> = ({ width, height }) => {
             onGameComplete={handleGameComplete}
             isPaused={isPaused}
           />
+          
+          {/* 全画面ボタン */}
+          <button
+            onClick={toggleFullscreen}
+            className="absolute top-4 left-4 z-10 px-4 py-2 bg-black bg-opacity-50 text-white rounded-full shadow-lg hover:bg-opacity-70 transition-all"
+            title={isFullscreen ? '全画面を終了' : '全画面表示'}
+          >
+            {isFullscreen ? '🗙' : '⛶'}
+          </button>
           
           {/* ゲーム中の設定ボタン */}
           <button
@@ -199,6 +211,22 @@ const GameClearScreen: FC<GameClearScreenProps> = ({
   onRetry, 
   onBackToTitle 
 }) => {
+  // キーボード操作でリトライ（スペースキー）、タイトルへ戻る（ESCキー）
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        onRetry();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        onBackToTitle();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [onRetry, onBackToTitle]);
+
   // ハイスコアの管理
   const currentHighScore = typeof window !== 'undefined' 
     ? parseInt(localStorage.getItem('stellarAdventureHighScore') || '0')
@@ -279,6 +307,22 @@ const GameOverScreen: FC<GameOverScreenProps> = ({
   onRetry, 
   onBackToTitle 
 }) => {
+  // キーボード操作でリトライ（スペースキー）、タイトルへ戻る（ESCキー）
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        onRetry();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        onBackToTitle();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [onRetry, onBackToTitle]);
+
   return (
     <div
       className="flex flex-col items-center justify-center bg-gradient-to-b from-red-900 via-purple-900 to-gray-900 relative"
@@ -318,6 +362,10 @@ const GameOverScreen: FC<GameOverScreenProps> = ({
           
           <div className="text-base text-gray-500">
             もう一度挑戦してみましょう！
+          </div>
+          
+          <div className="text-sm text-gray-600 mt-2">
+            スペース/Enter: リトライ | ESC: タイトルへ
           </div>
         </div>
 

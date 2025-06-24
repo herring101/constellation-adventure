@@ -247,3 +247,36 @@ html {
 .overflow-hidden {
   overflow: hidden;
 }
+
+/* 全画面モード用スタイル */
+.fullscreen-game {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: #000 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  z-index: 9999 !important;
+}
+
+.fullscreen-game > div {
+  width: min(100vw, 1200px) !important;
+  height: min(100vh, 800px) !important;
+  max-width: none !important;
+  max-height: none !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.fullscreen-game canvas {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+}

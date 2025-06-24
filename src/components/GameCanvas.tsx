@@ -78,7 +78,8 @@ export const GameCanvas: FC<GameCanvasProps> = ({ width, height, onGameComplete,
       (window as unknown as Record<string, unknown>).stellarSoundManager = soundManagerRef.current;
       console.log('[GameCanvas] SoundManager instance exposed globally');
     }
-  }, [soundManagerRef.current]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const gameOverSEPlayedRef = useRef<boolean>(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   
@@ -212,13 +213,13 @@ export const GameCanvas: FC<GameCanvasProps> = ({ width, height, onGameComplete,
       { 
         x: 2600, y: height - 350, velocityX: 0, velocityY: 0, 
         type: 'blackhole', width: 60, height: 60,
-        pullRadius: 120, killRadius: 30
+        pullRadius: 200, killRadius: 35
       },
       // ブラックホール敵（セクション7の最終試練）
       { 
         x: 3650, y: height - 400, velocityX: 0, velocityY: 0, 
         type: 'blackhole', width: 60, height: 60,
-        pullRadius: 100, killRadius: 30
+        pullRadius: 180, killRadius: 35
       },
     ],
     score: 0,
@@ -508,7 +509,7 @@ export const GameCanvas: FC<GameCanvasProps> = ({ width, height, onGameComplete,
             
             // 引き寄せ効果
             if (enemy.pullRadius && distance < enemy.pullRadius && distance > 0) {
-              const pullStrength = Math.max(0.1, (enemy.pullRadius - distance) / enemy.pullRadius) * 0.3;
+              const pullStrength = Math.max(0.2, (enemy.pullRadius - distance) / enemy.pullRadius) * 1.2;
               const pullX = (-dx / distance) * pullStrength;
               const pullY = (-dy / distance) * pullStrength;
               
@@ -516,8 +517,8 @@ export const GameCanvas: FC<GameCanvasProps> = ({ width, height, onGameComplete,
               player.velocityX += pullX;
               player.velocityY += pullY;
               
-              // 速度制限（引き寄せが強すぎないように）
-              const maxPullVelocity = 8;
+              // 速度制限（強力な引き寄せ）
+              const maxPullVelocity = 15;
               player.velocityX = Math.max(-maxPullVelocity, Math.min(maxPullVelocity, player.velocityX));
               player.velocityY = Math.max(-maxPullVelocity, Math.min(maxPullVelocity, player.velocityY));
             }
