@@ -35,6 +35,8 @@ interface Enemy {
   height: number;
   minX?: number;
   maxX?: number;
+  pullRadius?: number; // ブラックホール用の引き寄せ範囲
+  killRadius?: number; // ブラックホール用の即死範囲
 }
 
 export interface GameState {
@@ -193,6 +195,18 @@ export const GameCanvas: FC<GameCanvasProps> = ({ width, height, onGameComplete 
         x: 3000, y: height - 220, velocityX: 3, velocityY: 0, 
         type: 'shooting-star', width: 40, height: 20,
         minX: 2900, maxX: 3400
+      },
+      // ブラックホール敵（セクション5の高所）
+      { 
+        x: 2600, y: height - 350, velocityX: 0, velocityY: 0, 
+        type: 'blackhole', width: 60, height: 60,
+        pullRadius: 120, killRadius: 30
+      },
+      // ブラックホール敵（セクション7の最終試練）
+      { 
+        x: 3650, y: height - 400, velocityX: 0, velocityY: 0, 
+        type: 'blackhole', width: 60, height: 60,
+        pullRadius: 100, killRadius: 30
       },
     ],
     score: 0,
@@ -455,6 +469,35 @@ export const GameCanvas: FC<GameCanvasProps> = ({ width, height, onGameComplete 
                 onGameComplete(newState.score, true);
               }
               return prev;
+            }
+          } else if (enemy.type === 'blackhole') {
+            // ブラックホールとプレイヤーの距離計算
+            const dx = player.x - enemy.x;
+            const dy = player.y - enemy.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            // 即死範囲チェック
+            if (enemy.killRadius && distance < enemy.killRadius) {
+              if (onGameComplete) {
+                onGameComplete(newState.score, true);
+              }
+              return prev;
+            }
+            
+            // 引き寄せ効果
+            if (enemy.pullRadius && distance < enemy.pullRadius && distance > 0) {
+              const pullStrength = Math.max(0.1, (enemy.pullRadius - distance) / enemy.pullRadius) * 0.3;
+              const pullX = (-dx / distance) * pullStrength;
+              const pullY = (-dy / distance) * pullStrength;
+              
+              // プレイヤーの速度に引き寄せ力を追加
+              player.velocityX += pullX;
+              player.velocityY += pullY;
+              
+              // 速度制限（引き寄せが強すぎないように）
+              const maxPullVelocity = 8;
+              player.velocityX = Math.max(-maxPullVelocity, Math.min(maxPullVelocity, player.velocityX));
+              player.velocityY = Math.max(-maxPullVelocity, Math.min(maxPullVelocity, player.velocityY));
             }
           }
         }
@@ -836,6 +879,65 @@ export const GameCanvas: FC<GameCanvasProps> = ({ width, height, onGameComplete 
           ctx.lineTo(direction * tailLength, 8);
           ctx.closePath();
           ctx.fill();
+        } else if (enemy.type === 'blackhole') {
+          // ブラックホールの描画
+          const time = Date.now() / 1000;
+          
+          // 引き寄せ範囲の視覚効果（薄い紫の円）
+          if (enemy.pullRadius) {
+            ctx.globalAlpha = 0.1 + Math.sin(time * 2) * 0.05;
+            const pullGradient = ctx.createRadialGradient(0, 0, 0, 0, 0, enemy.pullRadius);
+            pullGradient.addColorStop(0, 'rgba(128, 0, 128, 0.3)');
+            pullGradient.addColorStop(0.7, 'rgba(75, 0, 130, 0.2)');
+            pullGradient.addColorStop(1, 'rgba(25, 25, 112, 0)');
+            ctx.fillStyle = pullGradient;
+            ctx.beginPath();
+            ctx.arc(0, 0, enemy.pullRadius, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          
+          // メインのブラックホール
+          ctx.globalAlpha = 1;
+          const blackholeGradient = ctx.createRadialGradient(0, 0, 0, 0, 0, enemy.width/2);
+          blackholeGradient.addColorStop(0, '#000000');
+          blackholeGradient.addColorStop(0.3, '#1a0033');
+          blackholeGradient.addColorStop(0.6, '#330066');
+          blackholeGradient.addColorStop(0.8, '#4b0082');
+          blackholeGradient.addColorStop(1, '#6a0d83');
+          
+          ctx.fillStyle = blackholeGradient;
+          ctx.beginPath();
+          ctx.arc(0, 0, enemy.width/2, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // 回転する外縁のリング
+          ctx.save();
+          ctx.rotate(time * 2);
+          ctx.strokeStyle = '#8a2be2';
+          ctx.lineWidth = 3;
+          ctx.globalAlpha = 0.8;
+          ctx.beginPath();
+          ctx.arc(0, 0, enemy.width/2 - 5, 0, Math.PI * 2);
+          ctx.stroke();
+          
+          // 内側の輝くリング
+          ctx.rotate(-time * 4);
+          ctx.strokeStyle = '#da70d6';
+          ctx.lineWidth = 2;
+          ctx.globalAlpha = 0.6 + Math.sin(time * 6) * 0.3;
+          ctx.beginPath();
+          ctx.arc(0, 0, enemy.width/2 - 15, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+          
+          // 中心の完全な暗闇（即死範囲）
+          if (enemy.killRadius) {
+            ctx.fillStyle = '#000000';
+            ctx.globalAlpha = 1;
+            ctx.beginPath();
+            ctx.arc(0, 0, enemy.killRadius, 0, Math.PI * 2);
+            ctx.fill();
+          }
         }
         
         ctx.restore();
