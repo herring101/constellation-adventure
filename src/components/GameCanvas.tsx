@@ -25,6 +25,18 @@ interface Item {
   type: 'star-fragment';
 }
 
+interface Enemy {
+  x: number;
+  y: number;
+  velocityX: number;
+  velocityY: number;
+  type: 'shooting-star' | 'blackhole';
+  width: number;
+  height: number;
+  minX?: number;
+  maxX?: number;
+}
+
 export interface GameState {
   player: {
     x: number;
@@ -38,6 +50,7 @@ export interface GameState {
   };
   platforms: Platform[];
   items: Item[];
+  enemies: Enemy[];
   score: number;
   keys: Set<string>;
   gameCompleted: boolean;
@@ -161,6 +174,26 @@ export const GameCanvas: FC<GameCanvasProps> = ({ width, height, onGameComplete 
       { x: 3800, y: height - 180, collected: false, type: 'star-fragment' as const },
       { x: 3840, y: height - 220, collected: false, type: 'star-fragment' as const },
       { x: 3880, y: height - 180, collected: false, type: 'star-fragment' as const },
+    ],
+    enemies: [
+      // 流れ星敵（セクション2と3の間）
+      { 
+        x: 900, y: height - 200, velocityX: 2, velocityY: 0, 
+        type: 'shooting-star', width: 40, height: 20,
+        minX: 800, maxX: 1100
+      },
+      // 流れ星敵（セクション4）
+      { 
+        x: 1700, y: height - 180, velocityX: -1.5, velocityY: 0, 
+        type: 'shooting-star', width: 40, height: 20,
+        minX: 1600, maxX: 1900
+      },
+      // 流れ星敵（セクション6）
+      { 
+        x: 3000, y: height - 220, velocityX: 3, velocityY: 0, 
+        type: 'shooting-star', width: 40, height: 20,
+        minX: 2900, maxX: 3400
+      },
     ],
     score: 0,
     keys: new Set(),
@@ -393,6 +426,39 @@ export const GameCanvas: FC<GameCanvasProps> = ({ width, height, onGameComplete 
           return prev; // 状態更新を停止
         }
         
+        // 敵の移動とプレイヤーとの当たり判定
+        const enemies = [...newState.enemies];
+        for (let i = 0; i < enemies.length; i++) {
+          const enemy = enemies[i];
+          
+          if (enemy.type === 'shooting-star') {
+            // 流れ星の左右移動
+            enemy.x += enemy.velocityX;
+            
+            // 範囲制限と反転
+            if (enemy.minX !== undefined && enemy.maxX !== undefined) {
+              if (enemy.x <= enemy.minX || enemy.x >= enemy.maxX) {
+                enemy.velocityX *= -1; // 速度反転
+              }
+              enemy.x = Math.max(enemy.minX, Math.min(enemy.maxX, enemy.x));
+            }
+            
+            // プレイヤーとの当たり判定
+            if (
+              player.x + 12 > enemy.x - enemy.width/2 &&
+              player.x - 12 < enemy.x + enemy.width/2 &&
+              player.y + 12 > enemy.y - enemy.height/2 &&
+              player.y - 12 < enemy.y + enemy.height/2
+            ) {
+              // 敵に触れたらゲームオーバー
+              if (onGameComplete) {
+                onGameComplete(newState.score, true);
+              }
+              return prev;
+            }
+          }
+        }
+        
         // 星のかけら収集チェック
         const items = [...newState.items];
         let newScore = newState.score;
@@ -413,7 +479,7 @@ export const GameCanvas: FC<GameCanvasProps> = ({ width, height, onGameComplete 
           }
         }
 
-        return { ...newState, player, items, score: newScore };
+        return { ...newState, player, items, enemies, score: newScore };
       });
 
       animationFrameRef.current = requestAnimationFrame(gameLoop);
@@ -718,6 +784,61 @@ export const GameCanvas: FC<GameCanvasProps> = ({ width, height, onGameComplete 
           
           ctx.restore();
         }
+      }
+    });
+
+    // 敵の描画
+    gameState.enemies.forEach(enemy => {
+      const enemyScreenX = enemy.x - gameState.camera.x;
+      
+      // 画面内にある場合のみ描画
+      if (enemyScreenX + enemy.width >= 0 && enemyScreenX <= width) {
+        ctx.save();
+        ctx.translate(enemyScreenX, enemy.y);
+        
+        if (enemy.type === 'shooting-star') {
+          // 流れ星の描画
+          const time = Date.now() / 1000;
+          
+          // 軌跡効果
+          ctx.shadowColor = '#ff6600';
+          ctx.shadowBlur = 15;
+          
+          // メインの流れ星
+          const starGradient = ctx.createRadialGradient(0, 0, 0, 0, 0, enemy.width/2);
+          starGradient.addColorStop(0, '#ffffff');
+          starGradient.addColorStop(0.3, '#ffaa00');
+          starGradient.addColorStop(0.7, '#ff6600');
+          starGradient.addColorStop(1, '#ff4400');
+          
+          ctx.fillStyle = starGradient;
+          ctx.beginPath();
+          ctx.ellipse(0, 0, enemy.width/2, enemy.height/2, 0, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // コアの輝き
+          ctx.fillStyle = '#ffffff';
+          ctx.globalAlpha = 0.8 + Math.sin(time * 8) * 0.2;
+          ctx.beginPath();
+          ctx.arc(0, 0, 5, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // 尻尾エフェクト
+          ctx.globalAlpha = 0.6;
+          ctx.fillStyle = '#ff8800';
+          const tailLength = 30;
+          const direction = enemy.velocityX > 0 ? -1 : 1;
+          
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(direction * tailLength, -8);
+          ctx.lineTo(direction * tailLength * 0.7, 0);
+          ctx.lineTo(direction * tailLength, 8);
+          ctx.closePath();
+          ctx.fill();
+        }
+        
+        ctx.restore();
       }
     });
     
