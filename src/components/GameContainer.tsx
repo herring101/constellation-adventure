@@ -4,7 +4,7 @@ import { useState } from 'react';
 import type { FC } from 'react';
 import { GameCanvas } from './GameCanvas';
 
-type GameScreen = 'title' | 'playing' | 'gameOver';
+type GameScreen = 'title' | 'playing' | 'gameOver' | 'gameClear';
 
 interface GameContainerProps {
   width: number;
@@ -19,9 +19,9 @@ export const GameContainer: FC<GameContainerProps> = ({ width, height }) => {
     setCurrentScreen('playing');
   };
 
-  const handleGameComplete = (score: number) => {
+  const handleGameComplete = (score: number, isGameOver: boolean = false) => {
     setFinalScore(score);
-    setCurrentScreen('gameOver');
+    setCurrentScreen(isGameOver ? 'gameOver' : 'gameClear');
   };
 
   const handleRetry = () => {
@@ -47,6 +47,16 @@ export const GameContainer: FC<GameContainerProps> = ({ width, height }) => {
           width={width}
           height={height}
           onGameComplete={handleGameComplete}
+        />
+      )}
+
+      {currentScreen === 'gameClear' && (
+        <GameClearScreen
+          width={width}
+          height={height}
+          score={finalScore}
+          onRetry={handleRetry}
+          onBackToTitle={handleBackToTitle}
         />
       )}
 
@@ -134,7 +144,7 @@ const TitleScreen: FC<TitleScreenProps> = ({ width, height, onStartGame }) => {
   );
 };
 
-interface GameOverScreenProps {
+interface GameClearScreenProps {
   width: number;
   height: number;
   score: number;
@@ -142,7 +152,7 @@ interface GameOverScreenProps {
   onBackToTitle: () => void;
 }
 
-const GameOverScreen: FC<GameOverScreenProps> = ({ 
+const GameClearScreen: FC<GameClearScreenProps> = ({ 
   width, 
   height, 
   score, 
@@ -207,6 +217,91 @@ const GameOverScreen: FC<GameOverScreenProps> = ({
               タイトルへ戻る
             </span>
             <div className="absolute inset-0 rounded-full bg-gradient-to-r from-purple-400/20 to-pink-400/20 blur-xl"></div>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+interface GameOverScreenProps {
+  width: number;
+  height: number;
+  score: number;
+  onRetry: () => void;
+  onBackToTitle: () => void;
+}
+
+const GameOverScreen: FC<GameOverScreenProps> = ({ 
+  width, 
+  height, 
+  score, 
+  onRetry, 
+  onBackToTitle 
+}) => {
+  return (
+    <div
+      className="flex flex-col items-center justify-center bg-gradient-to-b from-red-900 via-purple-900 to-gray-900 relative"
+      style={{ width, height }}
+    >
+      {/* 背景の悲しげなエフェクト */}
+      <div className="absolute inset-0">
+        {Array.from({ length: 30 }).map((_, i) => (
+          <div
+            key={i}
+            className="absolute bg-gray-400 rounded-full animate-pulse opacity-30"
+            style={{
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              width: `${Math.random() * 2 + 1}px`,
+              height: `${Math.random() * 2 + 1}px`,
+              animationDelay: `${Math.random() * 3}s`,
+              animationDuration: `${Math.random() * 3 + 2}s`,
+            }}
+          />
+        ))}
+      </div>
+
+      <div className="text-center relative z-10">
+        <h1 className="text-5xl font-bold mb-6 bg-gradient-to-r from-red-400 to-orange-400 bg-clip-text text-transparent">
+          💥 GAME OVER 💥
+        </h1>
+        
+        <div className="mb-8 space-y-4">
+          <div className="text-2xl text-gray-300">
+            スコア: <span className="text-yellow-400 font-bold">{score}</span>
+          </div>
+          
+          <div className="text-lg text-gray-400">
+            星の欠片を{score}個集めました！
+          </div>
+          
+          <div className="text-base text-gray-500">
+            もう一度挑戦してみましょう！
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <button
+            onClick={onRetry}
+            className="relative px-8 py-4 bg-gradient-to-r from-orange-600 via-red-500 to-pink-600 hover:from-orange-500 hover:via-red-400 hover:to-pink-500 text-white font-bold text-xl rounded-full shadow-2xl transform hover:scale-110 transition-all duration-300 active:scale-95 border-4 border-white/30 backdrop-blur-sm mr-4"
+          >
+            <span className="relative z-10 flex items-center gap-2">
+              <span className="text-2xl">🔄</span>
+              リトライ
+            </span>
+            <div className="absolute inset-0 rounded-full bg-gradient-to-r from-orange-400/20 to-red-400/20 blur-xl"></div>
+          </button>
+          
+          <button
+            onClick={onBackToTitle}
+            className="relative px-8 py-4 bg-gradient-to-r from-gray-600 via-gray-700 to-gray-800 hover:from-gray-500 hover:via-gray-600 hover:to-gray-700 text-white font-bold text-xl rounded-full shadow-2xl transform hover:scale-110 transition-all duration-300 active:scale-95 border-4 border-white/30 backdrop-blur-sm"
+          >
+            <span className="relative z-10 flex items-center gap-2">
+              <span className="text-2xl">🏠</span>
+              タイトルへ戻る
+            </span>
+            <div className="absolute inset-0 rounded-full bg-gradient-to-r from-gray-400/20 to-gray-600/20 blur-xl"></div>
           </button>
         </div>
       </div>

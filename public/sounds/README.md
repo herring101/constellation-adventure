@@ -1,18 +1,17 @@
 # Sound Files
 
-This directory contains placeholder sound files for the game.
+This directory contains sound files for the game.
 
-## Required Files:
-- bgm.mp3 - Background music (looping)
-- jump.mp3 - Jump sound effect
-- collect.mp3 - Star collection sound effect
-- goal.mp3 - Goal reached sound effect
+## Current Files:
+- bgm.wav - Background music (looping) - from Kenney Interface Sounds (CC0)
+- jump.wav - Jump sound effect - from Kenney Interface Sounds (CC0)
+- collect.wav - Star collection sound effect - from Kenney Interface Sounds (CC0)
+- goal.wav - Goal reached sound effect - from Kenney Interface Sounds (CC0)
 
-## Placeholder Implementation:
-Currently using Web Audio API to generate simple synthetic sounds.
+## Sound Source:
+All sounds are from Kenney's Interface Sounds pack (CC0 License)
+- Original source: https://kenney.nl/assets/interface-sounds
+- GitHub repository: https://github.com/Calinou/kenney-interface-sounds
 
-## Future Implementation:
-Replace with actual sound files from free sound libraries like:
-- 魔王魂
-- 効果音ラボ
-- DOVA-SYNDROME
+## License:
+CC0 1.0 Universal - Public Domain

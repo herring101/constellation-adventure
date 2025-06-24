@@ -39,10 +39,10 @@ export class SoundManager {
 
   private async loadSounds(): Promise<void> {
     const soundFiles = {
-      bgm: '/sounds/bgm.mp3',
-      jump: '/sounds/jump.mp3',
-      collect: '/sounds/collect.mp3',
-      goal: '/sounds/goal.mp3'
+      bgm: '/sounds/bgm.ogg',
+      jump: '/sounds/jump.wav',
+      collect: '/sounds/collect.wav',
+      goal: '/sounds/goal.wav'
     };
 
     const loadPromises = Object.entries(soundFiles).map(async ([key, url]) => {

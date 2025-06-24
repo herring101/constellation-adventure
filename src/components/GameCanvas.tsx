@@ -2,12 +2,12 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type { FC } from 'react';
-import { SynthSoundManager } from '@/lib/audio/SynthSoundManager';
+import { SoundManager } from '@/lib/audio/SoundManager';
 
 interface GameCanvasProps {
   width: number;
   height: number;
-  onGameComplete?: (score: number) => void;
+  onGameComplete?: (score: number, isGameOver?: boolean) => void;
 }
 
 interface Platform {
@@ -15,7 +15,7 @@ interface Platform {
   y: number;
   width: number;
   height: number;
-  type: 'ground' | 'star' | 'cloud' | 'ice';
+  type: 'ground' | 'star' | 'cloud' | 'ice' | 'pit';
 }
 
 interface Item {
@@ -52,7 +52,7 @@ export interface GameState {
 export const GameCanvas: FC<GameCanvasProps> = ({ width, height, onGameComplete }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameRef = useRef<number>(0);
-  const soundManagerRef = useRef<SynthSoundManager | null>(null);
+  const soundManagerRef = useRef<SoundManager | null>(null);
   const [soundEnabled, setSoundEnabled] = useState(true);
   
   const [gameState, setGameState] = useState<GameState>({
@@ -67,8 +67,22 @@ export const GameCanvas: FC<GameCanvasProps> = ({ width, height, onGameComplete 
       x: 0,
     },
     platforms: [
-      // Section 1: 星の導き (0-500px)
-      { x: 0, y: height - 32, width: 4000, height: 32, type: 'ground' }, // 長い地面
+      // Section 1: 星の導き (0-500px) - 穴あり地面
+      { x: 0, y: height - 32, width: 350, height: 32, type: 'ground' },
+      // 穴1: x:350-450 (100px gap)
+      { x: 450, y: height - 32, width: 300, height: 32, type: 'ground' },
+      // 穴2: x:750-850 (100px gap)  
+      { x: 850, y: height - 32, width: 400, height: 32, type: 'ground' },
+      // 穴3: x:1250-1350 (100px gap)
+      { x: 1350, y: height - 32, width: 500, height: 32, type: 'ground' },
+      // 穴4: x:1850-1950 (100px gap)
+      { x: 1950, y: height - 32, width: 400, height: 32, type: 'ground' },
+      // 穴5: x:2350-2450 (100px gap)
+      { x: 2450, y: height - 32, width: 400, height: 32, type: 'ground' },
+      // 穴6: x:2850-2950 (100px gap)
+      { x: 2950, y: height - 32, width: 500, height: 32, type: 'ground' },
+      // 穴7: x:3450-3550 (100px gap)
+      { x: 3550, y: height - 32, width: 450, height: 32, type: 'ground' },
       { x: 200, y: height - 120, width: 128, height: 32, type: 'star' },
       { x: 400, y: height - 200, width: 128, height: 32, type: 'star' },
       
@@ -162,7 +176,7 @@ export const GameCanvas: FC<GameCanvasProps> = ({ width, height, onGameComplete 
   // サウンドマネージャーの初期化
   useEffect(() => {
     const initSound = async () => {
-      const soundManager = SynthSoundManager.getInstance();
+      const soundManager = SoundManager.getInstance();
       await soundManager.initialize();
       soundManagerRef.current = soundManager;
       // BGM開始
@@ -350,13 +364,33 @@ export const GameCanvas: FC<GameCanvasProps> = ({ width, height, onGameComplete 
         // 左端の制限（カメラを考慮）
         player.x = Math.max(16, player.x);
 
-        // 落下時のリセット
+        // 穴への落下チェック（地面レベル付近で穴エリアにいる場合）
+        const groundLevel = height - 32;
+        const pitAreas = [
+          {x: 350, width: 100}, // 穴1
+          {x: 750, width: 100}, // 穴2  
+          {x: 1250, width: 100}, // 穴3
+          {x: 1850, width: 100}, // 穴4
+          {x: 2350, width: 100}, // 穴5
+          {x: 2850, width: 100}, // 穴6
+          {x: 3450, width: 100}, // 穴7
+        ];
+        
+        for (const pit of pitAreas) {
+          if (player.x > pit.x && player.x < pit.x + pit.width && player.y > groundLevel - 50) {
+            if (onGameComplete) {
+              onGameComplete(newState.score, true); // 穴に落ちてゲームオーバー
+            }
+            return prev;
+          }
+        }
+
+        // 画面下への落下時のゲームオーバー
         if (player.y > height + 50) {
-          player.x = 50;
-          player.y = height - 100;
-          player.velocityX = 0;
-          player.velocityY = 0;
-          newState.camera.x = 0; // カメラもリセット
+          if (onGameComplete) {
+            onGameComplete(newState.score, true); // isGameOver = true
+          }
+          return prev; // 状態更新を停止
         }
         
         // 星のかけら収集チェック
@@ -414,7 +448,7 @@ export const GameCanvas: FC<GameCanvasProps> = ({ width, height, onGameComplete 
       
       // 少し遅延してからゲーム完了コールバックを実行
       setTimeout(() => {
-        onGameComplete?.(gameState.score);
+        onGameComplete?.(gameState.score, false); // isGameOver = false
       }, 2000); // 2秒後にゲーム完了画面へ
     }
   }, [gameState.player, gameState.goal, gameState.gameCompleted, gameState.score, onGameComplete]);
@@ -447,6 +481,31 @@ export const GameCanvas: FC<GameCanvasProps> = ({ width, height, onGameComplete 
       // 画面内にある場合のみ描画
       if (screenX + platform.width >= 0 && screenX <= width) {
         drawPlatform(ctx, screenX, platform.y, platform.width, platform.height, platform.type);
+      }
+    }
+
+    // 穴の視覚的表現（暗い溝を描画）
+    const pitAreas = [
+      {x: 350, width: 100}, // 穴1
+      {x: 750, width: 100}, // 穴2  
+      {x: 1250, width: 100}, // 穴3
+      {x: 1850, width: 100}, // 穴4
+      {x: 2350, width: 100}, // 穴5
+      {x: 2850, width: 100}, // 穴6
+      {x: 3450, width: 100}, // 穴7
+    ];
+    
+    for (const pit of pitAreas) {
+      const screenX = pit.x - gameState.camera.x;
+      if (screenX + pit.width >= 0 && screenX <= width) {
+        // 暗い穴を描画
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(screenX, height - 32, pit.width, 32);
+        
+        // 危険を示す赤い境界線
+        ctx.strokeStyle = '#ff4444';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(screenX, height - 32, pit.width, 32);
       }
     }
     
