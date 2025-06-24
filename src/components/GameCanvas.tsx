@@ -1,10 +1,28 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { FC } from 'react';
+import { SynthSoundManager } from '@/lib/audio/SynthSoundManager';
 
 interface GameCanvasProps {
   width: number;
   height: number;
+  onGameComplete?: (score: number) => void;
+}
+
+interface Platform {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  type: 'ground' | 'star' | 'cloud' | 'ice';
+}
+
+interface Item {
+  x: number;
+  y: number;
+  collected: boolean;
+  type: 'star-fragment';
 }
 
 export interface GameState {
@@ -18,26 +36,24 @@ export interface GameState {
   camera: {
     x: number;
   };
-  platforms: Array<{
+  platforms: Platform[];
+  items: Item[];
+  score: number;
+  keys: Set<string>;
+  gameCompleted: boolean;
+  goal: {
     x: number;
     y: number;
     width: number;
     height: number;
-    type: 'ground' | 'star' | 'cloud' | 'ice';
-  }>;
-  items: Array<{
-    x: number;
-    y: number;
-    collected: boolean;
-    type: 'star-fragment';
-  }>;
-  score: number;
-  keys: Set<string>;
+  };
 }
 
-export const GameCanvas: React.FC<GameCanvasProps> = ({ width, height }) => {
+export const GameCanvas: FC<GameCanvasProps> = ({ width, height, onGameComplete }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameRef = useRef<number>(0);
+  const soundManagerRef = useRef<SynthSoundManager | null>(null);
+  const [soundEnabled, setSoundEnabled] = useState(true);
   
   const [gameState, setGameState] = useState<GameState>({
     player: {
@@ -128,25 +144,53 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ width, height }) => {
       { x: 3750, y: height - 390, collected: false, type: 'star-fragment' as const },
       
       // Section 8の星のかけら（ゴール報酬）
-      { x: 3850, y: height - 180, collected: false, type: 'star-fragment' as const },
-      { x: 3900, y: height - 180, collected: false, type: 'star-fragment' as const },
-      { x: 3950, y: height - 180, collected: false, type: 'star-fragment' as const },
+      { x: 3800, y: height - 180, collected: false, type: 'star-fragment' as const },
+      { x: 3840, y: height - 220, collected: false, type: 'star-fragment' as const },
+      { x: 3880, y: height - 180, collected: false, type: 'star-fragment' as const },
     ],
     score: 0,
     keys: new Set(),
+    gameCompleted: false,
+    goal: {
+      x: 3920,
+      y: height - 180,  // 地面の上に配置
+      width: 50,
+      height: 150
+    }
   });
+
+  // サウンドマネージャーの初期化
+  useEffect(() => {
+    const initSound = async () => {
+      const soundManager = SynthSoundManager.getInstance();
+      await soundManager.initialize();
+      soundManagerRef.current = soundManager;
+      // BGM開始
+      soundManager.playBGM();
+    };
+    
+    initSound();
+    
+    return () => {
+      soundManagerRef.current?.stopBGM();
+    };
+  }, []);
 
   // キーボード入力処理
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      setGameState(prev => ({
-        ...prev,
-        keys: new Set(prev.keys).add(e.key.toLowerCase()),
-      }));
+      setGameState(prev => {
+        if (prev.gameCompleted) return prev; // ゲーム完了後は入力を無効化
+        return {
+          ...prev,
+          keys: new Set(prev.keys).add(e.key.toLowerCase()),
+        };
+      });
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
       setGameState(prev => {
+        if (prev.gameCompleted) return prev; // ゲーム完了後は入力を無効化
         const newKeys = new Set(prev.keys);
         newKeys.delete(e.key.toLowerCase());
         return { ...prev, keys: newKeys };
@@ -160,7 +204,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ width, height }) => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, []);
+  }, [gameState.gameCompleted]);
 
   // タッチ入力処理（モバイル対応）
   useEffect(() => {
@@ -169,6 +213,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ width, height }) => {
 
     const handleTouchStart = (e: TouchEvent) => {
       e.preventDefault();
+      if (gameState.gameCompleted) return; // ゲーム完了後は入力を無効化
+      
       const rect = canvas.getBoundingClientRect();
       
       // 全てのタッチポイントを処理
@@ -240,12 +286,15 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ width, height }) => {
       canvas.removeEventListener('touchend', handleTouchEnd);
       canvas.removeEventListener('touchcancel', handleTouchEnd);
     };
-  }, [width, height]);
+  }, [width, height, gameState.gameCompleted]);
 
   // ゲームループ
   useEffect(() => {
     const gameLoop = () => {
       setGameState(prev => {
+        // ゲーム完了後は更新を停止
+        if (prev.gameCompleted) return prev;
+        
         const newState = { ...prev };
         const player = { ...newState.player };
 
@@ -265,6 +314,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ width, height }) => {
         if ((newState.keys.has('arrowup') || newState.keys.has('w') || newState.keys.has(' ')) && player.grounded) {
           player.velocityY = -15;
           player.grounded = false;
+          // ジャンプ音再生
+          soundManagerRef.current?.playSE('jump');
         }
 
         // 位置更新
@@ -322,6 +373,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ width, height }) => {
             if (distance < 30) { // 収集範囲
               items[i] = { ...item, collected: true };
               newScore += 100; // 100点獲得
+              // 収集音再生
+              soundManagerRef.current?.playSE('collect');
             }
           }
         }
@@ -340,6 +393,31 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ width, height }) => {
       }
     };
   }, [width, height]);
+
+  // ゲーム完了の監視（ゴールとの当たり判定）
+  useEffect(() => {
+    const player = gameState.player;
+    const goal = gameState.goal;
+    
+    // プレイヤーとゴールの当たり判定
+    const isColliding = 
+      player.x + 16 > goal.x &&
+      player.x - 16 < goal.x + goal.width &&
+      player.y + 16 > goal.y &&
+      player.y - 16 < goal.y + goal.height;
+    
+    if (isColliding && !gameState.gameCompleted) {
+      setGameState(prev => ({ ...prev, gameCompleted: true }));
+      // ゴール音再生
+      soundManagerRef.current?.playSE('goal');
+      soundManagerRef.current?.stopBGM();
+      
+      // 少し遅延してからゲーム完了コールバックを実行
+      setTimeout(() => {
+        onGameComplete?.(gameState.score);
+      }, 2000); // 2秒後にゲーム完了画面へ
+    }
+  }, [gameState.player, gameState.goal, gameState.gameCompleted, gameState.score, onGameComplete]);
 
   // 描画
   useEffect(() => {
@@ -378,96 +456,140 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ width, height }) => {
       
       switch (type) {
         case 'star':
-          // 星型プラットフォーム（金色・キラキラ）
-          const gradient = ctx.createLinearGradient(x, y, x, y + height);
-          gradient.addColorStop(0, '#ffd700');
-          gradient.addColorStop(0.5, '#ffed4e');
-          gradient.addColorStop(1, '#d97706');
-          ctx.fillStyle = gradient;
+          // 星雲プラットフォーム（紺と金のグラデーション）
+          const nebulaGradient = ctx.createLinearGradient(x, y, x + width, y + height);
+          nebulaGradient.addColorStop(0, '#1a237e');
+          nebulaGradient.addColorStop(0.3, '#311b92');
+          nebulaGradient.addColorStop(0.6, '#4a148c');
+          nebulaGradient.addColorStop(0.8, '#6a1b9a');
+          nebulaGradient.addColorStop(1, '#7b1fa2');
           
-          // 星型の描画
-          ctx.beginPath();
-          const spikes = 5;
-          const centerX = x + width / 2;
-          const centerY = y + height / 2;
-          const outerRadius = Math.min(width, height) / 2;
-          const innerRadius = outerRadius * 0.6;
+          // ベースの矩形を描画（透過なし）
+          ctx.fillStyle = nebulaGradient;
+          ctx.fillRect(x, y, width, height);
           
-          for (let i = 0; i < spikes * 2; i++) {
-            const radius = i % 2 === 0 ? outerRadius : innerRadius;
-            const angle = (i * Math.PI) / spikes - Math.PI / 2;
-            const px = centerX + Math.cos(angle) * radius;
-            const py = centerY + Math.sin(angle) * radius;
-            
-            if (i === 0) ctx.moveTo(px, py);
-            else ctx.lineTo(px, py);
-          }
-          ctx.closePath();
-          ctx.fill();
-          
-          // キラキラエフェクト
-          ctx.fillStyle = '#ffffff';
-          ctx.globalAlpha = 0.8;
-          for (let i = 0; i < 3; i++) {
-            const sparkX = x + (width / 4) * (i + 1);
-            const sparkY = y + height / 2;
+          // 星雲の模様
+          ctx.fillStyle = 'rgba(255, 215, 0, 0.3)';
+          for (let i = 0; i < 5; i++) {
+            const cloudX = x + (width / 6) * (i + 1);
+            const cloudY = y + height / 2 + Math.sin(i * 1.5) * height * 0.2;
+            const cloudR = height * 0.4;
+            const cloudGrad = ctx.createRadialGradient(cloudX, cloudY, 0, cloudX, cloudY, cloudR);
+            cloudGrad.addColorStop(0, 'rgba(255, 215, 0, 0.6)');
+            cloudGrad.addColorStop(0.5, 'rgba(255, 193, 7, 0.3)');
+            cloudGrad.addColorStop(1, 'rgba(255, 152, 0, 0)');
+            ctx.fillStyle = cloudGrad;
             ctx.beginPath();
-            ctx.arc(sparkX, sparkY, 2, 0, Math.PI * 2);
+            ctx.arc(cloudX, cloudY, cloudR, 0, Math.PI * 2);
             ctx.fill();
           }
+          
+          // キラキラ星
+          ctx.fillStyle = '#ffffff';
+          for (let i = 0; i < 8; i++) {
+            const starX = x + Math.random() * width;
+            const starY = y + Math.random() * height;
+            ctx.globalAlpha = 0.6 + Math.random() * 0.4;
+            ctx.beginPath();
+            ctx.arc(starX, starY, 1, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          
+          // エッジのハイライト
+          ctx.strokeStyle = 'rgba(255, 215, 0, 0.5)';
+          ctx.lineWidth = 2;
+          ctx.globalAlpha = 0.8;
+          ctx.strokeRect(x, y, width, height);
           break;
           
         case 'cloud':
-          // 雲型プラットフォーム（青・ふわふわ）
-          const cloudGradient = ctx.createLinearGradient(x, y, x, y + height);
-          cloudGradient.addColorStop(0, '#87ceeb');
-          cloudGradient.addColorStop(0.5, '#4fc3f7');
-          cloudGradient.addColorStop(1, '#29b6f6');
-          ctx.fillStyle = cloudGradient;
+          // 天空の雲プラットフォーム（深い青紫・ソリッド）
+          const skyGradient = ctx.createLinearGradient(x, y, x, y + height);
+          skyGradient.addColorStop(0, '#5c6bc0');
+          skyGradient.addColorStop(0.5, '#3f51b5');
+          skyGradient.addColorStop(1, '#303f9f');
           
-          // ふわふわ雲の描画
-          ctx.beginPath();
-          const cloudHeight = height * 0.8;
-          const cloudY = y + height * 0.2;
+          // ベースの矩形を描画（透過なし）
+          ctx.fillStyle = skyGradient;
+          ctx.fillRect(x, y, width, height);
           
-          // 雲の基本形
-          ctx.arc(x + width * 0.2, cloudY + cloudHeight * 0.5, cloudHeight * 0.3, 0, Math.PI * 2);
-          ctx.arc(x + width * 0.4, cloudY + cloudHeight * 0.3, cloudHeight * 0.4, 0, Math.PI * 2);
-          ctx.arc(x + width * 0.6, cloudY + cloudHeight * 0.3, cloudHeight * 0.4, 0, Math.PI * 2);
-          ctx.arc(x + width * 0.8, cloudY + cloudHeight * 0.5, cloudHeight * 0.3, 0, Math.PI * 2);
-          ctx.fill();
+          // 雲のテクスチャ
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+          for (let i = 0; i < 3; i++) {
+            const swirlX = x + width * (0.2 + i * 0.3);
+            const swirlY = y + height * 0.5;
+            const swirlR = height * 0.6;
+            ctx.beginPath();
+            ctx.arc(swirlX, swirlY, swirlR, 0, Math.PI * 2);
+            ctx.fill();
+          }
           
-          // 白いハイライト
+          // 星のキラメキ
           ctx.fillStyle = '#ffffff';
-          ctx.globalAlpha = 0.6;
-          ctx.arc(x + width * 0.3, cloudY + cloudHeight * 0.4, cloudHeight * 0.2, 0, Math.PI * 2);
-          ctx.fill();
+          for (let i = 0; i < 5; i++) {
+            ctx.globalAlpha = 0.3 + Math.random() * 0.5;
+            const sparkX = x + Math.random() * width;
+            const sparkY = y + Math.random() * height;
+            ctx.beginPath();
+            ctx.arc(sparkX, sparkY, 0.5, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          
+          // エッジの光
+          ctx.strokeStyle = 'rgba(147, 229, 252, 0.6)';
+          ctx.lineWidth = 1;
+          ctx.globalAlpha = 0.8;
+          ctx.strokeRect(x, y, width, height);
           break;
           
         case 'ice':
-          // 氷結晶プラットフォーム（水色・光沢）
-          const iceGradient = ctx.createLinearGradient(x, y, x, y + height);
-          iceGradient.addColorStop(0, '#e0f7ff');
-          iceGradient.addColorStop(0.5, '#81d4fa');
-          iceGradient.addColorStop(1, '#0277bd');
-          ctx.fillStyle = iceGradient;
+          // 結晶プラットフォーム（エメラルド・ソリッド）
+          const crystalGradient = ctx.createLinearGradient(x, y, x + width, y);
+          crystalGradient.addColorStop(0, '#006064');
+          crystalGradient.addColorStop(0.3, '#00838f');
+          crystalGradient.addColorStop(0.6, '#0097a7');
+          crystalGradient.addColorStop(1, '#00acc1');
           
-          // 氷結晶の描画
-          ctx.beginPath();
-          ctx.moveTo(x, y + height);
-          ctx.lineTo(x + width * 0.2, y);
-          ctx.lineTo(x + width * 0.4, y + height * 0.3);
-          ctx.lineTo(x + width * 0.6, y);
-          ctx.lineTo(x + width * 0.8, y + height * 0.6);
-          ctx.lineTo(x + width, y + height);
-          ctx.closePath();
-          ctx.fill();
+          // ベースの矩形を描画（透過なし）
+          ctx.fillStyle = crystalGradient;
+          ctx.fillRect(x, y, width, height);
           
-          // 光沢エフェクト
-          ctx.strokeStyle = '#ffffff';
+          // 結晶パターン
+          ctx.strokeStyle = 'rgba(224, 247, 250, 0.5)';
+          ctx.lineWidth = 1;
+          ctx.globalAlpha = 0.6;
+          
+          // ダイヤモンドパターン
+          for (let i = 0; i < 3; i++) {
+            const diamondX = x + width * (0.2 + i * 0.3);
+            const diamondY = y + height / 2;
+            const size = height * 0.3;
+            
+            ctx.beginPath();
+            ctx.moveTo(diamondX, diamondY - size);
+            ctx.lineTo(diamondX + size * 0.5, diamondY);
+            ctx.lineTo(diamondX, diamondY + size);
+            ctx.lineTo(diamondX - size * 0.5, diamondY);
+            ctx.closePath();
+            ctx.stroke();
+          }
+          
+          // キラキラ光
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+          for (let i = 0; i < 6; i++) {
+            const glintX = x + Math.random() * width;
+            const glintY = y + Math.random() * height;
+            ctx.globalAlpha = 0.6 + Math.random() * 0.4;
+            ctx.beginPath();
+            ctx.arc(glintX, glintY, 0.8, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          
+          // エッジハイライト
+          ctx.strokeStyle = 'rgba(178, 235, 242, 0.7)';
           ctx.lineWidth = 2;
-          ctx.globalAlpha = 0.7;
-          ctx.stroke();
+          ctx.globalAlpha = 0.9;
+          ctx.strokeRect(x, y, width, height);
           break;
           
         default: // ground
@@ -577,18 +699,136 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ width, height }) => {
     
     ctx.restore();
 
+    // ゴールの描画
+    const goalX = gameState.goal.x - gameState.camera.x;
+    if (goalX >= -100 && goalX <= width + 100) {
+      ctx.save();
+      
+      // ゴールの旗ポール
+      ctx.fillStyle = '#8B4513';
+      ctx.fillRect(goalX - 2, height - 200, 4, 170);
+      
+      // 旗の部分（星の冠デザイン）
+      ctx.translate(goalX, height - 180);
+      
+      // 冠の背景（光る効果）
+      const time = Date.now() / 1000;
+      const glowSize = 15 + Math.sin(time * 2) * 5;
+      const glowGradient = ctx.createRadialGradient(0, 0, 0, 0, 0, glowSize + 20);
+      glowGradient.addColorStop(0, 'rgba(255, 215, 0, 0.8)');
+      glowGradient.addColorStop(0.5, 'rgba(255, 215, 0, 0.4)');
+      glowGradient.addColorStop(1, 'rgba(255, 215, 0, 0)');
+      ctx.fillStyle = glowGradient;
+      ctx.fillRect(-40, -40, 80, 80);
+      
+      // 星の冠
+      ctx.fillStyle = '#FFD700';
+      ctx.strokeStyle = '#FFA500';
+      ctx.lineWidth = 2;
+      
+      // 冠の本体
+      ctx.beginPath();
+      ctx.moveTo(-25, 0);
+      ctx.lineTo(-25, -15);
+      ctx.lineTo(-15, -25);
+      ctx.lineTo(-5, -20);
+      ctx.lineTo(0, -30);
+      ctx.lineTo(5, -20);
+      ctx.lineTo(15, -25);
+      ctx.lineTo(25, -15);
+      ctx.lineTo(25, 0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      
+      // 冠の宝石（星）
+      ctx.fillStyle = '#FFFFFF';
+      for (let i = -1; i <= 1; i++) {
+        ctx.save();
+        ctx.translate(i * 15, -15);
+        ctx.rotate(time);
+        ctx.beginPath();
+        for (let j = 0; j < 5; j++) {
+          const angle = (j * Math.PI * 2) / 5 - Math.PI / 2;
+          const x = Math.cos(angle) * 5;
+          const y = Math.sin(angle) * 5;
+          if (j === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
+      
+      // "GOAL" テキスト
+      ctx.fillStyle = '#FFD700';
+      ctx.font = 'bold 20px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('GOAL', 0, 30);
+      
+      ctx.restore();
+    }
 
     // UI描画
     ctx.fillStyle = '#ffffff';
     ctx.font = '16px Arial';
     ctx.textAlign = 'left';
     ctx.fillText('🌟 Stellar Adventure', 10, 30);
-    ctx.fillText(`スコア: ${gameState.score}`, 10, 55);
+    
+    // スコア表示（回転する星付き）
+    ctx.save();
+    ctx.translate(10, 55);
+    ctx.fillText('スコア: ', 0, 0);
+    
+    // 回転する星
+    const scoreStarRotation = (Date.now() / 1000) * Math.PI * 2; // 1秒で1回転
+    ctx.save();
+    ctx.translate(50, -5);
+    ctx.rotate(scoreStarRotation);
+    ctx.fillStyle = '#FFD700';
+    ctx.beginPath();
+    const starSize = 8;
+    for (let i = 0; i < 5; i++) {
+      const angle = (i * Math.PI * 2) / 5 - Math.PI / 2;
+      const innerAngle = ((i + 0.5) * Math.PI * 2) / 5 - Math.PI / 2;
+      const x = Math.cos(angle) * starSize;
+      const y = Math.sin(angle) * starSize;
+      const innerX = Math.cos(innerAngle) * (starSize * 0.5);
+      const innerY = Math.sin(innerAngle) * (starSize * 0.5);
+      
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+      ctx.lineTo(innerX, innerY);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+    
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(`${gameState.score}`, 70, 0);
+    ctx.restore();
+    
     ctx.fillText(`星のかけら: ${gameState.items.filter(i => i.collected).length} / ${gameState.items.length}`, 10, 80);
     ctx.fillText(`距離: ${Math.round(player.x)}m`, 10, 105);
     
-    // ゴール到達チェック
-    if (player.x >= 3900) {
+    // サウンドボタン
+    ctx.save();
+    ctx.fillStyle = soundEnabled ? '#4ade80' : '#ef4444';
+    ctx.fillRect(width - 50, 10, 40, 30);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '20px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(soundEnabled ? '🔊' : '🔇', width - 30, 32);
+    ctx.restore();
+    
+    // ゴール到達チェック（当たり判定ベース）
+    const isAtGoal = 
+      player.x + 16 > gameState.goal.x &&
+      player.x - 16 < gameState.goal.x + gameState.goal.width &&
+      player.y + 16 > gameState.goal.y &&
+      player.y - 16 < gameState.goal.y + gameState.goal.height;
+      
+    if (isAtGoal || gameState.gameCompleted) {
       ctx.fillStyle = '#ffd700';
       ctx.font = 'bold 24px Arial';
       ctx.textAlign = 'center';
@@ -598,18 +838,40 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ width, height }) => {
       ctx.font = '18px Arial';
       ctx.fillText(`最終スコア: ${gameState.score}`, width / 2, height / 2 + 30);
     }
-  }, [gameState, width, height]);
+  }, [gameState, width, height, soundEnabled]);
+
+  // クリック処理（サウンドボタン）
+  const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const rect = canvasRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    // サウンドボタンの範囲内かチェック
+    if (x >= width - 50 && x <= width - 10 && y >= 10 && y <= 40) {
+      setSoundEnabled(prev => {
+        const newEnabled = !prev;
+        soundManagerRef.current?.setEnabled(newEnabled);
+        if (newEnabled && !gameState.gameCompleted) {
+          soundManagerRef.current?.playBGM();
+        }
+        return newEnabled;
+      });
+    }
+  };
 
   return (
     <canvas
       ref={canvasRef}
       width={width}
       height={height}
-      className="border border-gray-600 bg-gray-900"
+      className="border border-gray-600 bg-gray-900 cursor-pointer"
       style={{ 
         imageRendering: 'pixelated',
         touchAction: 'none' // スマホでのスクロール防止
       }}
+      onClick={handleCanvasClick}
     />
   );
 };

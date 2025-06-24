@@ -173,6 +173,11 @@ Based on our development experience, we recommend the following stable configura
 - Use stable, well-documented libraries
 - Test builds locally before pushing to deployment
 - Document successful configurations for future reference
+- **Prioritize gameplay over technical achievements** - A technically impressive but boring game is still boring
+- **Avoid echo chambers** - Be critical of implementations and seek honest feedback
+- **Real games need real challenges** - Enemies, damage systems, and game over conditions are essential
+- **Mobile UX requires careful planning** - Think through touch interactions before implementing
+- **Prototype core gameplay first** - Add visual polish only after the game is fun to play
 
 ## Special Thanks
 This project was built collaboratively by Stella and Seira as part of a live coding stream. We appreciate all contributions to make this game even better! ⭐

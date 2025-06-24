@@ -4,11 +4,16 @@ A 2D platformer game where players adventure through constellation worlds to col
 
 ## 🎮 Game Features
 
-- **Star Spirit Character**: Play as a magical star spirit collecting constellation powers
-- **2D Platformer Mechanics**: Classic jump and run gameplay with physics
-- **Mobile Support**: Touch controls for mobile devices
-- **Progressive Web App**: Installable on mobile devices
-- **Constellation Themes**: Adventure through different star constellation worlds
+- **Star Spirit Character**: Play as a golden star spirit on an adventure
+- **Horizontal Scrolling**: 4000px extended stage with camera following
+- **Star Fragment Collection**: Collect 26 star fragments for points
+- **Beautiful Platform Types**: 
+  - ⭐ Star platforms (golden, sparkly)
+  - ☁️ Cloud platforms (blue, fluffy)
+  - ❄️ Ice platforms (crystal-like)
+- **Mobile Support**: Multi-touch controls for simultaneous move and jump
+- **Score System**: 100 points per star fragment collected
+- **8 Stage Sections**: Each with unique platform arrangements and challenges
 
 ## 🚀 Getting Started
 
@@ -47,18 +52,21 @@ npm run dev
 - Enter or E: Action/Interact
 
 **Mobile:**
-- Swipe left/right: Move
-- Tap right side of screen: Jump
+- Left half of screen: Move left
+- Right half of screen: Move right  
+- Bottom 80% of screen: Jump
+- Multi-touch supported for simultaneous actions
 
 ## 🛠️ Development
 
 ### Tech Stack
 
-- **Framework**: Next.js 15 with App Router
-- **Language**: TypeScript with strict mode
-- **Styling**: Tailwind CSS
-- **Game Engine**: Custom Canvas-based engine
-- **Input**: Unified keyboard and touch input system
+- **Framework**: Next.js 15.3.4 with App Router and Turbopack
+- **Language**: TypeScript 5.8.3 with strict mode
+- **Styling**: Pure CSS (converted from Tailwind for testing)
+- **Game Engine**: Custom Canvas-based engine with React hooks
+- **Input**: Multi-touch support with proper touch point tracking
+- **Deployment**: Vercel with automatic CI/CD
 
 ### Project Structure
 
@@ -111,10 +119,23 @@ For Vercel deployment, connect your GitHub repository to Vercel and it will auto
 
 - [x] Basic player movement and physics
 - [x] Canvas rendering system
-- [x] Mobile touch controls
-- [ ] Multiple game levels
-- [ ] Enemies and obstacles
-- [ ] Power-ups and collectibles
+- [x] Mobile multi-touch controls
+- [x] Horizontal scrolling (4000px stage)
+- [x] Star fragment collection system
+- [x] Score tracking
+- [x] Beautiful platform graphics (star, cloud, ice)
+- [ ] Enemy characters (3+ types)
+- [ ] HP/damage system
+- [ ] Game over conditions
+- [ ] Power-ups and special abilities
 - [ ] Sound effects and music
-- [ ] Particle effects
+- [ ] Particle effects for collection/damage
+- [ ] Stage select and progression
 - [ ] Leaderboard system
+
+## 📝 Known Issues
+
+- Goal presentation needs improvement (currently just text)
+- No enemies or real challenge elements yet
+- Missing damage/game over mechanics
+- No sound effects or BGM
