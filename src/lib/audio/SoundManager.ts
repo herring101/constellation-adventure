@@ -91,9 +91,14 @@ export class SoundManager {
     const buffer = this.sounds.get(soundKey);
     if (!buffer) return;
 
+    // 重複防止のため、既存のSEが再生中でも新しいインスタンスを作成
     const source = this.audioContext.createBufferSource();
     source.buffer = buffer;
     source.connect(this.seGainNode);
+    
+    // デバッグ用ログ追加
+    console.log(`[SoundManager] Playing SE: ${soundKey} at ${Date.now()}`);
+    
     source.start();
   }
 

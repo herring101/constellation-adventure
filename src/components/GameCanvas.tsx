@@ -416,6 +416,12 @@ export const GameCanvas: FC<GameCanvasProps> = ({ width, height, onGameComplete 
         // 左端の制限（カメラを考慮）
         player.x = Math.max(16, player.x);
 
+        // 敵・アイテム・スコア処理のための変数初期化
+        const enemies = [...newState.enemies];
+        const items = [...newState.items];
+        let newScore = newState.score;
+        let isPerfectScore = newState.isPerfectScore;
+
         // 穴への落下チェック（実際に地面より下に落ちた場合のみ）
         if (!newState.gameOverTriggered) {
           const groundLevel = height - 32;
@@ -449,7 +455,7 @@ export const GameCanvas: FC<GameCanvasProps> = ({ width, height, onGameComplete 
         }
         
         // 敵の移動とプレイヤーとの当たり判定
-        const enemies = [...newState.enemies];
+        
         for (let i = 0; i < enemies.length; i++) {
           const enemy = enemies[i];
           
@@ -510,9 +516,6 @@ export const GameCanvas: FC<GameCanvasProps> = ({ width, height, onGameComplete 
         }
         
         // 星のかけら収集チェック
-        const items = [...newState.items];
-        let newScore = newState.score;
-        let isPerfectScore = newState.isPerfectScore;
         
         for (let i = 0; i < items.length; i++) {
           const item = items[i];
