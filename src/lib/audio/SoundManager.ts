@@ -42,7 +42,8 @@ export class SoundManager {
       bgm: '/sounds/bgm.ogg',
       jump: '/sounds/jump.wav',
       collect: '/sounds/collect.wav',
-      goal: '/sounds/goal.wav'
+      goal: '/sounds/goal.wav',
+      gameOver: '/sounds/collect.wav' // 一時的にcollectと同じファイルを使用
     };
 
     const loadPromises = Object.entries(soundFiles).map(async ([key, url]) => {

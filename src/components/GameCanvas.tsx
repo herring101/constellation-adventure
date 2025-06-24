@@ -425,18 +425,34 @@ export const GameCanvas: FC<GameCanvasProps> = ({ width, height, onGameComplete 
         
         for (const pit of pitAreas) {
           if (player.x > pit.x && player.x < pit.x + pit.width && player.y > groundLevel - 50) {
-            if (onGameComplete) {
-              onGameComplete(newState.score, true); // 穴に落ちてゲームオーバー
-            }
+            // ゲームオーバーSE再生
+            soundManagerRef.current?.playSE('gameOver');
+            soundManagerRef.current?.stopBGM();
+            
+            // 少し遅延してからゲームオーバー画面へ
+            setTimeout(() => {
+              if (onGameComplete) {
+                onGameComplete(newState.score, true); // 穴に落ちてゲームオーバー
+              }
+            }, 500); // 0.5秒後
+            
             return prev;
           }
         }
 
         // 画面下への落下時のゲームオーバー
         if (player.y > height + 50) {
-          if (onGameComplete) {
-            onGameComplete(newState.score, true); // isGameOver = true
-          }
+          // ゲームオーバーSE再生
+          soundManagerRef.current?.playSE('gameOver');
+          soundManagerRef.current?.stopBGM();
+          
+          // 少し遅延してからゲームオーバー画面へ
+          setTimeout(() => {
+            if (onGameComplete) {
+              onGameComplete(newState.score, true); // isGameOver = true
+            }
+          }, 500); // 0.5秒後
+          
           return prev; // 状態更新を停止
         }
         
@@ -464,10 +480,17 @@ export const GameCanvas: FC<GameCanvasProps> = ({ width, height, onGameComplete 
               player.y + 12 > enemy.y - enemy.height/2 &&
               player.y - 12 < enemy.y + enemy.height/2
             ) {
-              // 敵に触れたらゲームオーバー
-              if (onGameComplete) {
-                onGameComplete(newState.score, true);
-              }
+              // ゲームオーバーSE再生
+              soundManagerRef.current?.playSE('gameOver');
+              soundManagerRef.current?.stopBGM();
+              
+              // 少し遅延してからゲームオーバー画面へ
+              setTimeout(() => {
+                if (onGameComplete) {
+                  onGameComplete(newState.score, true);
+                }
+              }, 500); // 0.5秒後
+              
               return prev;
             }
           } else if (enemy.type === 'blackhole') {
@@ -478,9 +501,17 @@ export const GameCanvas: FC<GameCanvasProps> = ({ width, height, onGameComplete 
             
             // 即死範囲チェック
             if (enemy.killRadius && distance < enemy.killRadius) {
-              if (onGameComplete) {
-                onGameComplete(newState.score, true);
-              }
+              // ゲームオーバーSE再生
+              soundManagerRef.current?.playSE('gameOver');
+              soundManagerRef.current?.stopBGM();
+              
+              // 少し遅延してからゲームオーバー画面へ
+              setTimeout(() => {
+                if (onGameComplete) {
+                  onGameComplete(newState.score, true);
+                }
+              }, 500); // 0.5秒後
+              
               return prev;
             }
             
@@ -593,7 +624,7 @@ export const GameCanvas: FC<GameCanvasProps> = ({ width, height, onGameComplete 
       }
     }
 
-    // 穴の視覚的表現（暗い溝を描画）
+    // 自然な穴の視覚的表現
     const pitAreas = [
       {x: 350, width: 100}, // 穴1
       {x: 750, width: 100}, // 穴2  
@@ -607,14 +638,37 @@ export const GameCanvas: FC<GameCanvasProps> = ({ width, height, onGameComplete 
     for (const pit of pitAreas) {
       const screenX = pit.x - gameState.camera.x;
       if (screenX + pit.width >= 0 && screenX <= width) {
-        // 暗い穴を描画
-        ctx.fillStyle = '#000000';
-        ctx.fillRect(screenX, height - 32, pit.width, 32);
+        // 深い穴のグラデーション
+        const pitGradient = ctx.createLinearGradient(screenX, height - 32, screenX, height + 20);
+        pitGradient.addColorStop(0, '#2d2d2d');
+        pitGradient.addColorStop(0.3, '#1a1a1a');
+        pitGradient.addColorStop(0.7, '#0d0d0d');
+        pitGradient.addColorStop(1, '#000000');
         
-        // 危険を示す赤い境界線
-        ctx.strokeStyle = '#ff4444';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(screenX, height - 32, pit.width, 32);
+        ctx.fillStyle = pitGradient;
+        ctx.fillRect(screenX, height - 32, pit.width, 52);
+        
+        // 穴の縁部分（地面との境界）
+        ctx.fillStyle = '#8B4513';
+        // 左の縁
+        ctx.fillRect(screenX - 3, height - 35, 3, 8);
+        // 右の縁  
+        ctx.fillRect(screenX + pit.width, height - 35, 3, 8);
+        
+        // 穴の内部に岩や石のテクスチャ
+        ctx.fillStyle = '#333333';
+        for (let i = 0; i < 5; i++) {
+          const rockX = screenX + (pit.width / 6) * (i + 1);
+          const rockY = height - 25 + Math.random() * 15;
+          const rockSize = 2 + Math.random() * 3;
+          ctx.beginPath();
+          ctx.arc(rockX, rockY, rockSize, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        
+        // 微かな赤い光（危険の示唆）
+        ctx.fillStyle = 'rgba(255, 100, 100, 0.1)';
+        ctx.fillRect(screenX + 10, height - 30, pit.width - 20, 10);
       }
     }
     
