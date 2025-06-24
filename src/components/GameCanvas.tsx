@@ -56,6 +56,7 @@ export interface GameState {
   score: number;
   keys: Set<string>;
   gameCompleted: boolean;
+  isPerfectScore: boolean; // 25個全て集めたかどうか
   goal: {
     x: number;
     y: number;
@@ -212,6 +213,7 @@ export const GameCanvas: FC<GameCanvasProps> = ({ width, height, onGameComplete 
     score: 0,
     keys: new Set(),
     gameCompleted: false,
+    isPerfectScore: false,
     goal: {
       x: 3920,
       y: height - 180,  // 地面の上に配置
@@ -536,6 +538,7 @@ export const GameCanvas: FC<GameCanvasProps> = ({ width, height, onGameComplete 
         // 星のかけら収集チェック
         const items = [...newState.items];
         let newScore = newState.score;
+        let isPerfectScore = newState.isPerfectScore;
         
         for (let i = 0; i < items.length; i++) {
           const item = items[i];
@@ -549,11 +552,20 @@ export const GameCanvas: FC<GameCanvasProps> = ({ width, height, onGameComplete 
               newScore += 100; // 100点獲得
               // 収集音再生
               soundManagerRef.current?.playSE('collect');
+              
+              // パーフェクトスコア(25個=2500点)チェック
+              if (newScore >= 2500) {
+                isPerfectScore = true;
+                // 特別なパーフェクト音を再生（goal音を使用）
+                setTimeout(() => {
+                  soundManagerRef.current?.playSE('goal');
+                }, 200);
+              }
             }
           }
         }
 
-        return { ...newState, player, items, enemies, score: newScore };
+        return { ...newState, player, items, enemies, score: newScore, isPerfectScore };
       });
 
       animationFrameRef.current = requestAnimationFrame(gameLoop);
@@ -582,16 +594,31 @@ export const GameCanvas: FC<GameCanvasProps> = ({ width, height, onGameComplete 
     
     if (isColliding && !gameState.gameCompleted) {
       setGameState(prev => ({ ...prev, gameCompleted: true }));
-      // ゴール音再生
-      soundManagerRef.current?.playSE('goal');
+      
+      // パーフェクトスコアかどうかで演出を変える
+      if (gameState.isPerfectScore) {
+        // パーフェクト達成の特別演出
+        soundManagerRef.current?.playSE('goal');
+        setTimeout(() => {
+          soundManagerRef.current?.playSE('goal'); // 2回目の特別音
+        }, 300);
+        setTimeout(() => {
+          soundManagerRef.current?.playSE('collect'); // 3回目のキラキラ音
+        }, 600);
+      } else {
+        // 通常のゴール音
+        soundManagerRef.current?.playSE('goal');
+      }
+      
       soundManagerRef.current?.stopBGM();
       
       // 少し遅延してからゲーム完了コールバックを実行
+      const delay = gameState.isPerfectScore ? 3000 : 2000; // パーフェクトは3秒、通常は2秒
       setTimeout(() => {
         onGameComplete?.(gameState.score, false); // isGameOver = false
-      }, 2000); // 2秒後にゲーム完了画面へ
+      }, delay);
     }
-  }, [gameState.player, gameState.goal, gameState.gameCompleted, gameState.score, onGameComplete]);
+  }, [gameState.player, gameState.goal, gameState.gameCompleted, gameState.score, gameState.isPerfectScore, onGameComplete]);
 
   // 描画
   useEffect(() => {
@@ -1034,6 +1061,47 @@ export const GameCanvas: FC<GameCanvasProps> = ({ width, height, onGameComplete 
     ctx.stroke();
     
     ctx.restore();
+
+    // パーフェクトスコア時の特別エフェクト
+    if (gameState.isPerfectScore && !gameState.gameCompleted) {
+      const time = Date.now() / 1000;
+      
+      // 画面全体にキラキラエフェクト
+      ctx.save();
+      for (let i = 0; i < 30; i++) {
+        const sparkX = (Math.sin(time * 2 + i) * width * 0.8) + width * 0.5;
+        const sparkY = (Math.cos(time * 1.5 + i * 0.5) * height * 0.6) + height * 0.3;
+        const sparkSize = 2 + Math.sin(time * 8 + i) * 2;
+        
+        ctx.fillStyle = `hsl(${(time * 100 + i * 30) % 360}, 100%, 70%)`;
+        ctx.globalAlpha = 0.8 + Math.sin(time * 10 + i) * 0.2;
+        ctx.beginPath();
+        ctx.arc(sparkX, sparkY, sparkSize, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      
+      // 「PERFECT!」テキスト表示
+      ctx.globalAlpha = 0.9 + Math.sin(time * 6) * 0.1;
+      ctx.fillStyle = '#FFD700';
+      ctx.font = 'bold 48px Arial';
+      ctx.textAlign = 'center';
+      ctx.strokeStyle = '#FF6B00';
+      ctx.lineWidth = 3;
+      
+      const perfectText = 'PERFECT!';
+      const textY = height * 0.2;
+      ctx.strokeText(perfectText, width * 0.5, textY);
+      ctx.fillText(perfectText, width * 0.5, textY);
+      
+      // サブテキスト
+      ctx.globalAlpha = 0.8;
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = 'bold 24px Arial';
+      const subText = '全ての星の欠片を集めました！';
+      ctx.fillText(subText, width * 0.5, textY + 50);
+      
+      ctx.restore();
+    }
 
     // ゴールの描画
     const goalX = gameState.goal.x - gameState.camera.x;
